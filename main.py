@@ -56,6 +56,9 @@ class EnhancedResult(BaseModel):
 load_dotenv()
 validate_environment()
 
+# Track backend startup time for health monitoring
+BACKEND_START_TIME = time.time()
+
 app = FastAPI(title="ProductForge Backend Agent")
 
 @app.exception_handler(Exception)
@@ -247,6 +250,46 @@ async def get_agent_chain_history(job_id: str) -> dict:
 def home():
     return {"status": "running", "agent": "ProductForge Backend"}
 
+@app.get("/system/health")
+def system_health():
+    """Enhanced system health check with uptime and Redis status."""
+    try:
+        # Check Redis connectivity
+        redis_connected = r.ping()
+        
+        # Count active jobs in queue
+        active_jobs = r.llen("queue")
+        priority_queues = ["queue_high", "queue_low"]
+        for queue in priority_queues:
+            active_jobs += r.llen(queue)
+        
+        # Calculate uptime
+        uptime_seconds = round(time.time() - BACKEND_START_TIME, 2)
+        
+        # Count total results in system
+        total_results = len(list(r.scan_iter("result:*")))
+        
+        return {
+            "status": "ok",
+            "uptime_seconds": uptime_seconds,
+            "uptime_human": f"{int(uptime_seconds // 3600)}h {int((uptime_seconds % 3600) // 60)}m {int(uptime_seconds % 60)}s",
+            "redis_connected": redis_connected,
+            "active_jobs": active_jobs,
+            "total_results": total_results,
+            "timestamp": datetime.now().isoformat(),
+            "version": "S+ Tier Enhanced"
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "uptime_seconds": round(time.time() - BACKEND_START_TIME, 2),
+            "redis_connected": False,
+            "active_jobs": 0,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
 
 @app.post("/task")
 async def create_task(task: TaskRequest, bg: BackgroundTasks):
@@ -366,6 +409,69 @@ async def get_workflow_results(workflow_id: str):
         "detailed_results": sorted_results
     }
 
+@app.get("/workflow/{workflow_id}/timeline")
+async def get_workflow_timeline(workflow_id: str):
+    """Return the ordered chain of agent events within one workflow."""
+    timeline_events = []
+    
+    # Find all results for this workflow
+    for key in r.scan_iter("result:*"):
+        result = json.loads(r.get(key))
+        if result.get("workflow_id") == workflow_id:
+            timeline_events.append(result)
+    
+    if not timeline_events:
+        raise HTTPException(status_code=404, detail="Workflow timeline not found")
+    
+    # Sort chronologically by started_at or timestamp
+    sorted_events = sorted(
+        timeline_events, 
+        key=lambda x: x.get("started_at") or x.get("timestamp", "")
+    )
+    
+    # Build timeline with step numbers and cumulative time
+    timeline = []
+    cumulative_time = 0
+    
+    for i, event in enumerate(sorted_events):
+        execution_time = event.get("execution_time", 0)
+        cumulative_time += execution_time
+        
+        timeline_entry = {
+            "step": i + 1,
+            "role": event.get("role", "Unknown"),
+            "agent": event.get("agent", "unknown_agent"),
+            "started_at": event.get("started_at") or event.get("timestamp"),
+            "completed_at": event.get("completed_at"),
+            "execution_time": execution_time,
+            "cumulative_time": round(cumulative_time, 2),
+            "status": event.get("status", "completed"),
+            "confidence_score": event.get("confidence_score"),
+            "job_id": event.get("job_id")
+        }
+        timeline.append(timeline_entry)
+    
+    # Calculate workflow statistics
+    total_time = round(cumulative_time, 2)
+    average_step_time = round(total_time / len(timeline), 2) if timeline else 0
+    
+    # Find bottlenecks (steps taking > 150% of average time)
+    bottlenecks = [
+        step for step in timeline 
+        if step["execution_time"] > (average_step_time * 1.5) and average_step_time > 0
+    ]
+    
+    return {
+        "workflow_id": workflow_id,
+        "timeline": timeline,
+        "total_time": total_time,
+        "total_steps": len(timeline),
+        "average_step_time": average_step_time,
+        "bottlenecks": bottlenecks,
+        "workflow_status": "completed" if all(e.get("status") == "completed" for e in sorted_events) else "in_progress",
+        "generated_at": datetime.now().isoformat()
+    }
+
 @app.get("/results/agent/{agent_name}")
 def get_agent_results(agent_name: str, limit: int = 10):
     """Get results for a specific agent."""
@@ -417,6 +523,143 @@ def export_txt():
             f.write("---\n\n")
 
     return FileResponse(file_path, media_type="text/plain", filename="productforge_results.txt")
+
+@app.get("/performance/export")
+def export_performance_metrics(format: str = "json"):
+    """Export aggregated agent performance metrics in JSON or CSV format."""
+    import csv
+    from io import StringIO
+    
+    # Aggregate performance data
+    agent_metrics = {}
+    
+    # Get all agents
+    for key in r.scan_iter("agent:*"):
+        agent_data = json.loads(r.get(key))
+        agent_name = agent_data["name"]
+        agent_metrics[agent_name] = {
+            "agent_name": agent_name,
+            "role": agent_data.get("role", "Unknown"),
+            "total_tasks": 0,
+            "successful_tasks": 0,
+            "failed_tasks": 0,
+            "success_rate": 0.0,
+            "total_execution_time": 0.0,
+            "average_execution_time": 0.0,
+            "fastest_job": float('inf'),
+            "slowest_job": 0.0,
+            "last_activity": None
+        }
+    
+    # Process all results
+    execution_times = {}
+    for key in r.scan_iter("result:*"):
+        result = json.loads(r.get(key))
+        agent_name = result.get("agent") or result.get("agent_name")
+        
+        if agent_name and agent_name in agent_metrics:
+            metrics = agent_metrics[agent_name]
+            metrics["total_tasks"] += 1
+            
+            # Track success/failure
+            if result.get("output") and result.get("status") != "error":
+                metrics["successful_tasks"] += 1
+            else:
+                metrics["failed_tasks"] += 1
+            
+            # Track execution times
+            exec_time = result.get("execution_time", 0)
+            if exec_time and exec_time > 0:
+                metrics["total_execution_time"] += exec_time
+                metrics["fastest_job"] = min(metrics["fastest_job"], exec_time)
+                metrics["slowest_job"] = max(metrics["slowest_job"], exec_time)
+                
+                if agent_name not in execution_times:
+                    execution_times[agent_name] = []
+                execution_times[agent_name].append(exec_time)
+            
+            # Track last activity
+            timestamp = result.get("timestamp") or result.get("completed_at")
+            if timestamp:
+                if not metrics["last_activity"] or timestamp > metrics["last_activity"]:
+                    metrics["last_activity"] = timestamp
+    
+    # Calculate derived metrics
+    for agent_name, metrics in agent_metrics.items():
+        if metrics["total_tasks"] > 0:
+            metrics["success_rate"] = round(
+                (metrics["successful_tasks"] / metrics["total_tasks"]) * 100, 2
+            )
+        
+        if agent_name in execution_times and execution_times[agent_name]:
+            metrics["average_execution_time"] = round(
+                sum(execution_times[agent_name]) / len(execution_times[agent_name]), 2
+            )
+        
+        # Handle infinite values
+        if metrics["fastest_job"] == float('inf'):
+            metrics["fastest_job"] = 0.0
+        else:
+            metrics["fastest_job"] = round(metrics["fastest_job"], 2)
+        
+        metrics["slowest_job"] = round(metrics["slowest_job"], 2)
+        metrics["total_execution_time"] = round(metrics["total_execution_time"], 2)
+    
+    # Export based on format
+    if format.lower() == "csv":
+        # Generate CSV
+        output = StringIO()
+        if agent_metrics:
+            fieldnames = list(next(iter(agent_metrics.values())).keys())
+            writer = csv.DictWriter(output, fieldnames=fieldnames)
+            writer.writeheader()
+            for metrics in agent_metrics.values():
+                writer.writerow(metrics)
+        
+        csv_content = output.getvalue()
+        output.close()
+        
+        # Write to file and return
+        csv_file_path = "agent_performance_metrics.csv"
+        with open(csv_file_path, "w") as f:
+            f.write(csv_content)
+        
+        return FileResponse(
+            csv_file_path, 
+            media_type="text/csv", 
+            filename="agent_performance_metrics.csv"
+        )
+    
+    else:
+        # Return JSON format
+        export_data = {
+            "export_timestamp": datetime.now().isoformat(),
+            "total_agents": len(agent_metrics),
+            "metrics": list(agent_metrics.values()),
+            "summary": {
+                "total_tasks_across_agents": sum(m["total_tasks"] for m in agent_metrics.values()),
+                "average_success_rate": round(
+                    sum(m["success_rate"] for m in agent_metrics.values()) / len(agent_metrics) 
+                    if agent_metrics else 0, 2
+                ),
+                "fastest_average_agent": min(
+                    agent_metrics.items(), 
+                    key=lambda x: x[1]["average_execution_time"] or float('inf'),
+                    default=(None, None)
+                )[0] if agent_metrics else None
+            }
+        }
+        
+        # Write to file for download
+        json_file_path = "agent_performance_metrics.json"
+        with open(json_file_path, "w") as f:
+            json.dump(export_data, f, indent=2)
+        
+        return FileResponse(
+            json_file_path,
+            media_type="application/json",
+            filename="agent_performance_metrics.json"
+        )
 
 
 # ===========================
@@ -994,14 +1237,29 @@ def get_agent_performance():
             "average_duration": round(avg_duration, 2),
             "total_execution_time": round(total_execution_time, 2),
             "status": "active" if total_tasks > 0 else "idle",
-            "last_active": max([a["timestamp"] for a in recent_activity], default=None) if recent_activity else None,
+            "last_active": None,  # Simplified for stability
             "recent_performance": recent_activity[-5:] if recent_activity else []
         }
     
+    # Calculate top performer and fastest agent safely
+    top_performer = None
+    fastest_agent = None
+    
+    if performance:
+        # Find top performer by success rate
+        active_performers = [(name, stats) for name, stats in performance.items() if stats["success_rate"] > 0]
+        if active_performers:
+            top_performer = max(active_performers, key=lambda x: x[1]["success_rate"])[0]
+        
+        # Find fastest agent by average duration
+        active_agents = [(name, stats) for name, stats in performance.items() if stats["average_duration"] > 0]
+        if active_agents:
+            fastest_agent = min(active_agents, key=lambda x: x[1]["average_duration"])[0]
+    
     return {
         "agent_performance": performance,
-        "top_performer": max(performance.items(), key=lambda x: x[1]["success_rate"], default=(None, None))[0] if performance else None,
-        "fastest_agent": min(performance.items(), key=lambda x: x[1]["average_duration"] or float('inf'), default=(None, None))[0] if performance else None
+        "top_performer": top_performer,
+        "fastest_agent": fastest_agent
     }
 
 # ===========================
