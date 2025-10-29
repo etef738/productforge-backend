@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+workspace/uploads/
+workspace/logs/
+.env
+*.pyc
+*.zip
