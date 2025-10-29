@@ -322,6 +322,50 @@ async def get_result_details(job_id: str):
     """Get detailed result with full agent interaction chain."""
     return await get_agent_chain_history(job_id)
 
+@app.get("/results/workflow/{workflow_id}")
+async def get_workflow_results(workflow_id: str):
+    """Show entire agent chain for a workflow (Analyze→QA→Admin)."""
+    workflow_results = []
+    total_execution_time = 0
+    
+    for key in r.scan_iter("result:*"):
+        result = json.loads(r.get(key))
+        if result.get("workflow_id") == workflow_id:
+            workflow_results.append(result)
+            total_execution_time += result.get("execution_time", 0)
+    
+    if not workflow_results:
+        raise HTTPException(status_code=404, detail="Workflow results not found")
+    
+    # Sort by timestamp to show progression
+    sorted_results = sorted(workflow_results, key=lambda x: x.get("started_at", x.get("timestamp", "")))
+    
+    # Create workflow chain visualization
+    chain_visualization = []
+    for i, result in enumerate(sorted_results):
+        step_icon = {
+            "Analyze": "🔍", "QA": "✅", "Debug": "🐛", "Admin": "👥", "Assistant": "🤖"
+        }.get(result.get("role", ""), "⚙️")
+        
+        chain_visualization.append({
+            "step": i + 1,
+            "icon": step_icon,
+            "agent": result.get("agent"),
+            "role": result.get("role"),
+            "status": result.get("status", "completed"),
+            "execution_time": result.get("execution_time"),
+            "output_preview": result.get("output", "")[:200] + "..." if len(result.get("output", "")) > 200 else result.get("output", "")
+        })
+    
+    return {
+        "workflow_id": workflow_id,
+        "total_steps": len(sorted_results),
+        "total_execution_time": round(total_execution_time, 2),
+        "workflow_status": "completed" if all(r.get("status") == "completed" for r in sorted_results) else "in_progress",
+        "chain_visualization": chain_visualization,
+        "detailed_results": sorted_results
+    }
+
 @app.get("/results/agent/{agent_name}")
 def get_agent_results(agent_name: str, limit: int = 10):
     """Get results for a specific agent."""
@@ -444,12 +488,20 @@ def dashboard():
                 <div class="flex flex-wrap gap-3 mt-4">
                     <button type="submit"
                         class="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition">🚀 Send Task</button>
+                    <button type="button" id="fullOrchestration"
+                        class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg transition">🔄 Full Orchestration</button>
                     <button type="button" id="exportJson"
                         class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition">📥 Export JSON</button>
                     <button type="button" id="exportTxt"
                         class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition">📝 Export TXT</button>
                 </div>
             </form>
+
+            <!-- Agent Performance Dashboard -->
+            <div class="mb-6 p-6 bg-gray-800 rounded-lg shadow-md border border-indigo-600">
+                <h2 class="text-2xl font-bold text-indigo-400 mb-4">📊 Agent Performance</h2>
+                <div id="agentPerformance" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </div>
 
             <!-- Worker Console -->
             <div class="p-4 mt-8 bg-gray-800 border border-indigo-600 rounded-lg shadow-md">
@@ -481,34 +533,138 @@ def dashboard():
         </div>
 
 <script>
+// Enhanced Results with Workflow Visualization
 async function loadResults() {
   const response = await fetch('/results');
   const data = await response.json();
   const resultsDiv = document.getElementById('results');
   resultsDiv.innerHTML = '';
+  
   data.results.forEach((item) => {
-    const status = item.output ? "completed" : "processing";
+    const status = item.output && item.status !== 'error' ? "completed" : "processing";
     const glowClass = status === "completed" ? "glow-completed" : "glow-processing";
     const statusColor = status === "completed" ? "bg-green-600" : "bg-yellow-500 animate-pulse";
+    
+    // Role-based icons and colors
+    const roleConfig = {
+      'Analyze': { icon: '🔍', color: 'text-yellow-400' },
+      'QA': { icon: '✅', color: 'text-green-400' }, 
+      'Debug': { icon: '🐛', color: 'text-red-400' },
+      'Admin': { icon: '👥', color: 'text-blue-400' },
+      'Assistant': { icon: '🤖', color: 'text-purple-400' }
+    };
+    const config = roleConfig[item.role] || { icon: '⚙️', color: 'text-gray-400' };
+    
     const card = document.createElement('div');
     card.className = `p-6 bg-gray-800 rounded-lg shadow-md border border-indigo-600 fade-in ${glowClass}`;
     card.innerHTML = `
       <div class="flex items-center justify-between mb-3">
-        <h2 class="text-xl font-semibold text-indigo-300">🧩 Task</h2>
-        <span class="text-xs text-white px-2 py-1 rounded-full ${statusColor}">
-          ${status.toUpperCase()}
-        </span>
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">${config.icon}</span>
+          <h2 class="text-xl font-semibold ${config.color}">${item.role || 'Task'}</h2>
+        </div>
+        <div class="flex gap-2 items-center">
+          ${item.execution_time ? `<span class="text-xs text-gray-400">${item.execution_time}s</span>` : ''}
+          <span class="text-xs text-white px-2 py-1 rounded-full ${statusColor}">
+            ${status.toUpperCase()}
+          </span>
+        </div>
       </div>
-      <p class="text-lg text-gray-200 mb-4">${item.job}</p>
+      <p class="text-lg text-gray-200 mb-4">${item.job || 'No task description'}</p>
       <h3 class="text-lg font-semibold text-green-400">💡 Result:</h3>
       <p class="text-gray-300 whitespace-pre-wrap">${item.output || "⏳ Waiting..."}</p>
+      ${item.workflow_id ? `<p class="text-xs text-indigo-400 mt-2">🔗 Workflow: ${item.workflow_id}</p>` : ''}
       <p class="text-xs text-gray-500 mt-4 text-right">🌸 ${new Date().toLocaleString()}</p>
     `;
     resultsDiv.appendChild(card);
   });
 }
-setInterval(loadResults, 10000);
+
+// Load Agent Performance
+async function loadAgentPerformance() {
+  try {
+    const response = await fetch('/agent_performance');
+    const data = await response.json();
+    const performanceDiv = document.getElementById('agentPerformance');
+    performanceDiv.innerHTML = '';
+    
+    Object.entries(data.agent_performance).forEach(([name, stats]) => {
+      const statusColor = stats.status === 'active' ? 'text-green-400' : 'text-gray-400';
+      const card = document.createElement('div');
+      card.className = 'p-4 bg-gray-700 rounded-lg border border-gray-600';
+      card.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-lg font-semibold text-indigo-300">${name}</h3>
+          <span class="text-sm ${statusColor}">${stats.status}</span>
+        </div>
+        <p class="text-sm text-gray-400 mb-2">Role: ${stats.role}</p>
+        <div class="text-sm space-y-1">
+          <div>✅ Success: ${stats.success_rate}%</div>
+          <div>⚡ Avg Duration: ${stats.average_duration}s</div>
+          <div>📊 Total Tasks: ${stats.total_tasks}</div>
+        </div>
+      `;
+      performanceDiv.appendChild(card);
+    });
+  } catch (error) {
+    console.error('Failed to load agent performance:', error);
+  }
+}
+
+// Enhanced task submission with full orchestration option
+document.getElementById('taskForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const job = document.getElementById('job').value;
+  
+  try {
+    const response = await fetch('/task', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job: job })
+    });
+    
+    if (response.ok) {
+      document.getElementById('job').value = '';
+      loadResults();
+    }
+  } catch (error) {
+    console.error('Failed to submit task:', error);
+  }
+});
+
+// Full orchestration button
+document.getElementById('fullOrchestration').addEventListener('click', async () => {
+  const job = document.getElementById('job').value;
+  if (!job) return;
+  
+  try {
+    const response = await fetch('/full_orchestration', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        task_description: job,
+        enable_qa_chain: true 
+      })
+    });
+    
+    if (response.ok) {
+      document.getElementById('job').value = '';
+      loadResults();
+    }
+  } catch (error) {
+    console.error('Failed to start orchestration:', error);
+  }
+});
+
+// Auto-refresh functions
+setInterval(() => {
+  loadResults();
+  loadAgentPerformance();
+}, 10000);
+
+// Initial load
 loadResults();
+loadAgentPerformance();
 
 // Live Worker Log Stream
 const consoleLog = document.getElementById("consoleLog");
@@ -788,44 +944,64 @@ async def admin_review_task(job_id: str, review_prompt: str = "Evaluate this out
 
 @app.get("/agent_performance")
 def get_agent_performance():
-    """Get performance metrics for all agents."""
+    """Get enhanced performance metrics for all agents with success counts and average durations."""
     performance = {}
     
     for key in r.scan_iter("agent:*"):
         agent_data = json.loads(r.get(key))
         agent_name = agent_data["name"]
         
-        # Count completed tasks
+        # Enhanced metrics tracking
         completed_tasks = 0
         total_tasks = 0
+        failed_tasks = 0
+        total_execution_time = 0
+        execution_times = []
         recent_activity = []
         
         for result_key in r.scan_iter("result:*"):
             result = json.loads(r.get(result_key))
-            if result.get("agent_name") == agent_name:
+            if result.get("agent") == agent_name or result.get("agent_name") == agent_name:
                 total_tasks += 1
-                if result.get("output"):
+                
+                # Track execution time
+                exec_time = result.get("execution_time", 0)
+                if exec_time:
+                    execution_times.append(exec_time)
+                    total_execution_time += exec_time
+                
+                # Track success/failure
+                if result.get("output") and result.get("status") != "error":
                     completed_tasks += 1
+                else:
+                    failed_tasks += 1
                 
                 recent_activity.append({
                     "timestamp": result.get("timestamp"),
-                    "success": bool(result.get("output"))
+                    "success": bool(result.get("output") and result.get("status") != "error"),
+                    "execution_time": exec_time
                 })
         
         success_rate = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+        avg_duration = (total_execution_time / len(execution_times)) if execution_times else 0
         
         performance[agent_name] = {
             "role": agent_data.get("role"),
             "total_tasks": total_tasks,
             "completed_tasks": completed_tasks,
+            "failed_tasks": failed_tasks,
             "success_rate": round(success_rate, 2),
+            "average_duration": round(avg_duration, 2),
+            "total_execution_time": round(total_execution_time, 2),
             "status": "active" if total_tasks > 0 else "idle",
-            "last_active": max([a["timestamp"] for a in recent_activity], default=None) if recent_activity else None
+            "last_active": max([a["timestamp"] for a in recent_activity], default=None) if recent_activity else None,
+            "recent_performance": recent_activity[-5:] if recent_activity else []
         }
     
     return {
         "agent_performance": performance,
-        "top_performer": max(performance.items(), key=lambda x: x[1]["success_rate"], default=(None, None))[0] if performance else None
+        "top_performer": max(performance.items(), key=lambda x: x[1]["success_rate"], default=(None, None))[0] if performance else None,
+        "fastest_agent": min(performance.items(), key=lambda x: x[1]["average_duration"] or float('inf'), default=(None, None))[0] if performance else None
     }
 
 # ===========================

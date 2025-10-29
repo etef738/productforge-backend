@@ -1,108 +1,187 @@
-import os
-import json
-import redis
-import time
-import datetime
+import os, redis, json, time, traceback
+from datetime import datetime
 from openai import OpenAI
 from dotenv import load_dotenv
+from pydantic import BaseModel
+from config import settings
 
-# ===========================
-# INITIAL SETUP
-# ===========================
-
+# =====================================
+# ENVIRONMENT SETUP
+# =====================================
 load_dotenv()
+r = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Connect to Redis
-r = redis.from_url(os.environ.get("REDIS_URL", "redis://localhost:6379"))
-
-# Initialize OpenAI
-client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-
-# Log file path
-LOG_DIR = "workspace/logs"
-LOG_FILE = os.path.join(LOG_DIR, "worker_log.txt")
-
-# Ensure directory exists
-os.makedirs(LOG_DIR, exist_ok=True)
+LOG_PATH = "workspace/logs/worker_log.txt"
+os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
 
 
-# ===========================
-# LOGGING FUNCTION
-# ===========================
+# =====================================
+# DATA MODELS
+# =====================================
+class EnhancedResult(BaseModel):
+    job_id: str
+    agent: str
+    role: str
+    output: str
+    status: str
+    workflow_id: str | None = None
+    parent_job_id: str | None = None
+    confidence_score: float | None = None
+    started_at: str | None = None
+    completed_at: str | None = None
+    execution_time: float | None = None
 
-def log_event(message: str):
-    """Write both to terminal and to log file for the live dashboard."""
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    line = f"[{timestamp}] {message}"
+
+# =====================================
+# LOGGING UTILS
+# =====================================
+def log(msg: str):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{timestamp}] {msg}"
     print(line)
-
-    with open(LOG_FILE, "a") as f:
+    with open(LOG_PATH, "a") as f:
         f.write(line + "\n")
 
 
-# ===========================
-# MAIN WORKER LOOP
-# ===========================
+# =====================================
+# AGENT PROMPTS (SPEC AGENT STYLE)
+# =====================================
+SPEC_PROMPTS = {
+    "Analyze": """You are a specialist AI engineer. 
+Analyze the uploaded project or code for functionality, structure, and clarity.
+Identify strengths, weaknesses, and possible improvements.""",
 
-print("🧠 ProductForge Worker started — waiting for jobs...")
-log_event("🧠 Worker online and monitoring Redis queue...")
+    "QA": """You are a quality assurance AI reviewer.
+Evaluate the previous agent’s output for correctness, completeness, and accuracy.
+Provide feedback or corrections if necessary.""",
 
-while True:
-    try:
-        # Check for new jobs
-        job_data = r.brpop("queue", timeout=5)
-        if not job_data:
-            continue  # no job found, keep polling
+    "Debug": """You are an AI debugger.
+Inspect reported issues or code snippets and identify bugs, errors, and performance bottlenecks.
+Suggest fixes or optimizations.""",
 
-        _, raw_payload = job_data
-        payload = json.loads(raw_payload)
-        job_id = payload.get("job_id")
-        job = payload.get("job")
-        mode = payload.get("mode", "default")
-        project = payload.get("project", "unknown")
-        crew = payload.get("crew", False)
+    "Admin": """You are the orchestration admin.
+Review the results from all agents (Analyze, QA, Debug) and produce a final summary report.
+Highlight action points and overall system health."""
+}
 
-        # Log job start
-        log_event(f"⚙️ Running job: {job_id} | mode={mode} | project={project} | crew={crew}")
 
-        # ===========================
-        # EXECUTE JOB VIA OPENAI
-        # ===========================
-        try:
-            completion = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "You are a ProductForge AI development assistant."},
-                    {"role": "user", "content": job}
-                ],
-                max_tokens=800,
-                temperature=0.7,
-            )
-            output = completion.choices[0].message.content.strip()
-        except Exception as e:
-            output = f"❌ OpenAI error: {str(e)}"
-            log_event(output)
+# =====================================
+# AI EXECUTION FUNCTION
+# =====================================
+def execute_ai_task(agent_name: str, role: str, job: dict) -> str:
+    """Run OpenAI completion with contextual role prompt."""
+    system_prompt = SPEC_PROMPTS.get(role, "You are an AI agent.")
+    user_content = job.get("job", "No task description provided.")
 
-        # ===========================
-        # SAVE RESULT
-        # ===========================
-        result = {
-            "job_id": job_id,
-            "job": job,
-            "output": output,
-            "mode": mode,
-            "project": project,
-            "timestamp": datetime.datetime.now().isoformat()
+    completion = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
+        ]
+    )
+
+    output = completion.choices[0].message.content.strip()
+    return output
+
+
+# =====================================
+# WORKFLOW HANDLING
+# =====================================
+def handle_workflow(result: EnhancedResult):
+    """Chain to next step in workflow if required (e.g., QA or Admin review)."""
+    if result.role.lower() == "analyze":
+        # Queue QA review job
+        qa_job = {
+            "workflow_id": result.workflow_id,
+            "job": f"Review analysis from {result.agent}",
+            "mode": "QA",
+            "agent": "qa_bot",
+            "role": "QA",
+            "parent_job_id": result.job_id,
         }
+        r.lpush("queue", json.dumps(qa_job))
+        log(f"🔁 Queued QA review for workflow {result.workflow_id}")
+    elif result.role.lower() == "qa":
+        # Queue Admin feedback job
+        admin_job = {
+            "workflow_id": result.workflow_id,
+            "job": f"Summarize QA feedback and finalize report",
+            "mode": "Admin",
+            "agent": "admin_bot",
+            "role": "Admin",
+            "parent_job_id": result.job_id,
+        }
+        r.lpush("queue", json.dumps(admin_job))
+        log(f"🏁 Queued Admin summary for workflow {result.workflow_id}")
 
-        r.set(f"result:{job_id}", json.dumps(result), ex=3600)  # expire in 1 hour
-        log_event(f"✅ Completed job: {job_id}")
 
-    except KeyboardInterrupt:
-        log_event("🛑 Worker manually stopped by user.")
-        print("\nGraceful shutdown.")
-        break
+# =====================================
+# MAIN WORKER LOOP
+# =====================================
+def main():
+    log("🧠 Multi-Agent Worker started and connected to Redis...")
 
-    except Exception as e:
-        log_event(f"🚨 Unexpected error: {str(e)}")
-        time.sleep(3)
+    while True:
+        try:
+            job_data = r.brpop("queue", timeout=5)
+            if not job_data:
+                time.sleep(1)
+                continue
+
+            _, raw_job = job_data
+            job = json.loads(raw_job)
+
+            job_id = job.get("job_id", str(time.time()))
+            agent_name = job.get("agent", "default_agent")
+            role = job.get("role", "Analyze")
+            workflow_id = job.get("workflow_id")
+            log(f"⚙️ Processing job {job_id} | Role: {role} | Agent: {agent_name}")
+
+            start_time = time.time()
+
+            # Execute AI Task
+            try:
+                output = execute_ai_task(agent_name, role, job)
+                status = "completed"
+                confidence = 0.95
+            except Exception as e:
+                output = f"❌ AI execution failed: {str(e)}"
+                status = "error"
+                confidence = 0.0
+                log(traceback.format_exc())
+
+            end_time = time.time()
+            exec_time = round(end_time - start_time, 2)
+
+            result = EnhancedResult(
+                job_id=job_id,
+                agent=agent_name,
+                role=role,
+                output=output,
+                status=status,
+                workflow_id=workflow_id,
+                confidence_score=confidence,
+                started_at=datetime.fromtimestamp(start_time).isoformat(),
+                completed_at=datetime.fromtimestamp(end_time).isoformat(),
+                execution_time=exec_time
+            )
+
+            r.setex(f"result:{job_id}", 3600, result.model_dump_json())
+            log(f"✅ Result saved for job {job_id} ({role}) — {status} in {exec_time}s")
+
+            # Chain next workflow step if applicable
+            handle_workflow(result)
+
+        except KeyboardInterrupt:
+            log("🛑 Worker stopped manually.")
+            break
+        except Exception as e:
+            log(f"❌ Worker loop error: {str(e)}")
+            log(traceback.format_exc())
+            time.sleep(3)
+
+
+if __name__ == "__main__":
+    main()
