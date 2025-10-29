@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, Field
+import time
+from uuid import uuid4
 from config import settings, validate_environment
 
 # ===========================
@@ -35,16 +37,18 @@ class AgentResponse(BaseModel):
 
 class EnhancedResult(BaseModel):
     job_id: str
-    agent: str
-    role: str
-    status: str = Field(default="completed", description="Task status: queued, processing, completed, failed")
-    output: str
-    reviewed_by: Optional[str] = Field(None, description="Agent that reviewed this result")
-    confidence_score: Optional[float] = Field(None, ge=0.0, le=1.0)
-    execution_time: Optional[float] = Field(None, description="Task execution time in seconds")
-    timestamp: str
     workflow_id: Optional[str] = Field(None, description="Associated workflow ID")
     parent_job_id: Optional[str] = Field(None, description="Parent job if this is a review/follow-up")
+    agent: Optional[str] = Field(None, description="Agent name")
+    role: Optional[str] = Field(None, description="Agent role")
+    reviewed_by: Optional[str] = Field(None, description="Agent that reviewed this result")
+    status: str = Field(default="completed", description="Task status: queued, processing, completed, failed")
+    output: Optional[str] = Field(None, description="Task output")
+    started_at: Optional[str] = Field(None, description="Task start time")
+    completed_at: Optional[str] = Field(None, description="Task completion time")
+    execution_time: Optional[float] = Field(None, description="Task execution time in seconds")
+    confidence_score: Optional[float] = Field(None, ge=0.0, le=1.0)
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat(), description="Result timestamp")
 
 # ===========================
 # ENVIRONMENT & APP SETUP
@@ -152,28 +156,33 @@ async def create_default_agents():
             r.set(key, json.dumps(agent_data))
 
 async def dispatch_task(job: dict):
-    """
-    Dispatch a job to the correct AI agent based on its mode or role.
-    Future: Integrate internal message passing between agents.
-    """
-    mode = job.get("mode", "analyze")
+    """Route a job to the most appropriate agent by role/keywords."""
+    mode = job.get("mode", "Analyze").lower()
     agents = [json.loads(r.get(k)) for k in r.scan_iter("agent:*")]
+
     if not agents:
-        return {"error": "No agents registered."}
+        raise HTTPException(status_code=400, detail="No agents registered.")
 
-    # Match by role (Analyzer, QA, Debugger)
-    target = None
-    for a in agents:
-        if a["role"].lower() == mode.lower():
-            target = a
-            break
+    # Keyword / role match
+    keywords = {
+        "analyze": "Analyze",
+        "review": "QA",
+        "qa": "QA",
+        "debug": "Debug",
+        "fix": "Debug",
+        "security": "Security",
+    }
 
-    if not target:
-        target = agents[0]  # fallback to first agent
+    target_role = keywords.get(mode, mode)
+    target = next((a for a in agents if a["role"].lower() == target_role.lower()), agents[0])
 
     job["dispatched_to"] = target["name"]
+    job["assigned_role"] = target["role"]
+    job["workflow_id"] = job.get("workflow_id", str(uuid4()))
+    job["started_at"] = datetime.now().isoformat()
+
     r.lpush("queue", json.dumps(job))
-    return {"status": "dispatched", "agent": target["name"], "job_id": job["job_id"]}
+    return {"status": "dispatched", "agent": target["name"], "workflow_id": job["workflow_id"]}
 
 async def create_enhanced_result(job_id: str, agent_name: str, role: str, output: str, 
                                workflow_id: str = None, reviewed_by: str = None, 
@@ -279,11 +288,16 @@ async def create_task(task: TaskRequest, bg: BackgroundTasks):
 
 @app.post("/dispatch_task")
 async def dispatch_task_endpoint(payload: dict):
-    """Create task with intelligent agent dispatch based on mode."""
-    job_id = str(uuid.uuid4())
+    """Accepts a job, determines its agent, and queues it."""
+    job_id = str(uuid4())
     payload["job_id"] = job_id
-    dispatch_result = await dispatch_task(payload)
-    return {"status": "queued", "job_id": job_id, "dispatch": dispatch_result}
+    dispatch_info = await dispatch_task(payload)
+    return {
+        "status": "queued",
+        "job_id": job_id,
+        "dispatched_to": dispatch_info["agent"],
+        "workflow_id": dispatch_info["workflow_id"],
+    }
 
 
 @app.get("/results")
@@ -573,7 +587,7 @@ def register_agent(agent: Agent):
     """Register a new AI agent with validation."""
     key = f"agent:{agent.name.lower().replace(' ', '_')}"
     if r.exists(key):
-        raise HTTPException(status_code=400, detail=f"Agent '{agent.name}' already exists.")
+        raise HTTPException(status_code=400, detail="Agent already exists.")
     
     # Store agent with metadata
     agent_data = agent.dict()
@@ -590,7 +604,7 @@ def list_agents():
     agents = []
     for key in r.scan_iter("agent:*"):
         agents.append(json.loads(r.get(key)))
-    return {"agents": agents}
+    return {"count": len(agents), "agents": agents}
 
 @app.get("/agents/{agent_name}")
 def get_agent_details(agent_name: str):
@@ -624,10 +638,10 @@ def get_agent_details(agent_name: str):
 def delete_agent(name: str):
     """Delete a specific agent."""
     key = f"agent:{name.lower().replace(' ', '_')}"
-    if r.exists(key):
-        r.delete(key)
-        return {"status": "deleted", "agent": name}
-    raise HTTPException(status_code=404, detail=f"Agent '{name}' not found.")
+    if not r.exists(key):
+        raise HTTPException(status_code=404, detail="Agent not found.")
+    r.delete(key)
+    return {"status": "deleted", "agent": name}
 
 # ===========================
 # MULTI-AGENT ORCHESTRATION
