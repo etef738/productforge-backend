@@ -20,7 +20,7 @@ kombu==5.5.4
 openai==2.6.0
 packaging==25.0
 prompt_toolkit==3.0.52
-pydantic==2.12.3
+pydantic>=2.5
 pydantic_core==2.41.4
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
