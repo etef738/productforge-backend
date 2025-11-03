@@ -62,9 +62,8 @@ jobs:
         python -c "import main; print('Main module imports successfully')"
         python -c "import worker; print('Worker module imports successfully')"
     
-    # TODO: Add proper pytest suite
-    # - name: Run tests
-    #   run: pytest tests/
+    - name: Run tests
+      run: pytest tests/ -v --tb=short
     
     - name: Check code style (optional)
       run: |
