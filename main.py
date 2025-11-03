@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 import time
 from uuid import uuid4
 from config import settings, validate_environment
+from models import EnhancedResult
 
 # ===========================
 # PYDANTIC MODELS
@@ -35,20 +36,7 @@ class AgentResponse(BaseModel):
     confidence: Optional[float] = Field(None, ge=0.0, le=1.0)
     review_needed: Optional[bool] = Field(False)
 
-class EnhancedResult(BaseModel):
-    job_id: str
-    workflow_id: Optional[str] = Field(None, description="Associated workflow ID")
-    parent_job_id: Optional[str] = Field(None, description="Parent job if this is a review/follow-up")
-    agent: Optional[str] = Field(None, description="Agent name")
-    role: Optional[str] = Field(None, description="Agent role")
-    reviewed_by: Optional[str] = Field(None, description="Agent that reviewed this result")
-    status: str = Field(default="completed", description="Task status: queued, processing, completed, failed")
-    output: Optional[str] = Field(None, description="Task output")
-    started_at: Optional[str] = Field(None, description="Task start time")
-    completed_at: Optional[str] = Field(None, description="Task completion time")
-    execution_time: Optional[float] = Field(None, description="Task execution time in seconds")
-    confidence_score: Optional[float] = Field(None, ge=0.0, le=1.0)
-    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat(), description="Result timestamp")
+# EnhancedResult now imported from models.py
 
 # ===========================
 # ENVIRONMENT & APP SETUP

@@ -4,6 +4,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from config import settings
+from models import EnhancedResult
 
 # =====================================
 # ENVIRONMENT SETUP
@@ -19,20 +20,7 @@ os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
 # =====================================
 # DATA MODELS
 # =====================================
-class EnhancedResult(BaseModel):
-    job_id: str
-    agent: str
-    role: str
-    output: str
-    status: str
-    workflow_id: str | None = None
-    parent_job_id: str | None = None
-    confidence_score: float | None = None
-    started_at: str | None = None
-    completed_at: str | None = None
-    execution_time: float | None = None
-
-
+# EnhancedResult now imported from models.py
 # =====================================
 # LOGGING UTILS
 # =====================================

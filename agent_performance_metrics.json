@@ -1,5 +1,5 @@
 {
-  "export_timestamp": "2025-10-29T15:27:35.009066",
+  "export_timestamp": "2025-11-03T11:29:28.134525",
   "total_agents": 4,
   "metrics": [
     {
@@ -31,15 +31,15 @@
     {
       "agent_name": "qa_bot",
       "role": "QA",
-      "total_tasks": 3,
-      "successful_tasks": 3,
+      "total_tasks": 0,
+      "successful_tasks": 0,
       "failed_tasks": 0,
-      "success_rate": 100.0,
-      "total_execution_time": 12.14,
-      "average_execution_time": 4.05,
-      "fastest_job": 2.61,
-      "slowest_job": 6.19,
-      "last_activity": "2025-10-29T19:06:58.237175"
+      "success_rate": 0.0,
+      "total_execution_time": 0.0,
+      "average_execution_time": 0.0,
+      "fastest_job": 0.0,
+      "slowest_job": 0.0,
+      "last_activity": null
     },
     {
       "agent_name": "analyzer_bot",
@@ -56,8 +56,8 @@
     }
   ],
   "summary": {
-    "total_tasks_across_agents": 3,
-    "average_success_rate": 25.0,
-    "fastest_average_agent": "qa_bot"
+    "total_tasks_across_agents": 0,
+    "average_success_rate": 0.0,
+    "fastest_average_agent": "general_assistant"
   }
 }
