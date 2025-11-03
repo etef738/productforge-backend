@@ -40,6 +40,23 @@ jobs:
         echo "OPENAI_API_KEY=test-key" >> .env
         echo "REDIS_URL=redis://localhost:6379" >> .env
     
+    - name: Check for duplicate class definitions
+      run: |
+        echo "🔍 Checking for duplicate class definitions..."
+        DUPLICATES=$(grep -r "^class " . --include="*.py" --exclude-dir=.venv --exclude-dir=.git | cut -d":" -f2 | sed 's/^[[:space:]]*//' | cut -d'(' -f1 | sort | uniq -c | awk '$1 > 1 {print "DUPLICATE: " $2}')
+        if [ -n "$DUPLICATES" ]; then
+          echo "❌ Duplicate class definitions detected:"
+          echo "$DUPLICATES"
+          echo ""
+          echo "Full class locations:"
+          grep -r "^class " . --include="*.py" --exclude-dir=.venv --exclude-dir=.git
+          exit 1
+        else
+          echo "✅ No duplicate class definitions found"
+          TOTAL=$(grep -r "^class " . --include="*.py" --exclude-dir=.venv --exclude-dir=.git | wc -l)
+          echo "Total classes detected: $TOTAL"
+        fi
+    
     - name: Run basic health check
       run: |
         python -c "import main; print('Main module imports successfully')"
