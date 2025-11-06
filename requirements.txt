@@ -24,6 +24,7 @@ pydantic>=2.5
 pydantic_core==2.41.4
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
+python-multipart
 redis==7.0.0
 six==1.17.0
 sniffio==1.3.1
