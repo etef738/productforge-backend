@@ -1,5 +1,0 @@
-agent_name,role,total_tasks,successful_tasks,failed_tasks,success_rate,total_execution_time,average_execution_time,fastest_job,slowest_job,last_activity
-general_assistant,Assistant,0,0,0,0.0,0.0,0.0,0.0,0.0,
-debugger_bot,Debug,0,0,0,0.0,0.0,0.0,0.0,0.0,
-qa_bot,QA,3,3,0,100.0,12.14,4.05,2.61,6.19,2025-10-29T19:06:58.237175
-analyzer_bot,Analyze,0,0,0,0.0,0.0,0.0,0.0,0.0,

@@ -18,7 +18,7 @@ class TestConfiguration:
         """Test configuration has reasonable defaults"""
         settings = Settings()
         assert settings.REDIS_URL == "redis://localhost:6379"
-        assert settings.MAX_UPLOAD_SIZE == 50_000_000  # 50MB
+        assert settings.MAX_UPLOAD_SIZE == 10_485_760  # 10MB
         assert settings.ALLOWED_EXTENSIONS == [".zip"]
     
     def test_environment_override(self):

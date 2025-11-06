@@ -88,12 +88,12 @@ except Exception as e:
         assert log_dir.exists(), "workspace/logs directory should exist"
         assert log_dir.is_dir(), "workspace/logs should be a directory"
     
-    def test_environment_template_exists(self):
-        """Ensure .env.example template exists for deployment"""
-        env_template = Path(".env.example")
-        assert env_template.exists(), ".env.example template must exist"
+    def test_environment_file_exists(self):
+        """Ensure .env configuration exists for deployment"""
+        env_file = Path(".env")
+        assert env_file.exists(), ".env configuration file must exist"
         
         # Check it contains required variables
-        content = env_template.read_text()
+        content = env_file.read_text()
         assert "OPENAI_API_KEY" in content
         assert "REDIS_URL" in content
