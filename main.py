@@ -667,26 +667,32 @@ def dashboard():
         <title>ProductForge AI Dashboard</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <style>
-.fade-in { animation: fadeIn 0.8s ease-in; }
+/* Enhanced animations and visual effects */
+.fade-in { 
+  animation: fadeIn 0.8s ease-in; 
+}
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Panel glow effects */
 .glow-processing {
-  box-shadow: 0 0 10px #facc15, 0 0 25px #fbbf24, 0 0 40px #f59e0b;
+  box-shadow: 0 0 15px #facc15, 0 0 30px #fbbf24, 0 0 45px #f59e0b;
   animation: pulseGlow 2s infinite alternate;
 }
 .glow-completed {
-  box-shadow: 0 0 10px #22c55e, 0 0 25px #16a34a, 0 0 40px #15803d;
+  box-shadow: 0 0 15px #22c55e, 0 0 30px #16a34a, 0 0 45px #15803d;
   animation: steadyGlow 3s infinite alternate;
 }
 .glow-error {
-  box-shadow: 0 0 10px #ef4444, 0 0 25px #dc2626, 0 0 40px #991b1b;
+  box-shadow: 0 0 15px #ef4444, 0 0 30px #dc2626, 0 0 45px #991b1b;
   animation: flicker 0.15s infinite alternate;
 }
+
 @keyframes pulseGlow {
   from { opacity: 0.7; transform: scale(1); }
-  to { opacity: 1; transform: scale(1.01); }
+  to { opacity: 1; transform: scale(1.02); }
 }
 @keyframes steadyGlow {
   from { opacity: 0.85; }
@@ -696,6 +702,102 @@ def dashboard():
   0% { opacity: 0.8; }
   50% { opacity: 1; }
   100% { opacity: 0.6; }
+}
+
+/* Console terminal styling */
+#consoleLog {
+  scrollbar-width: thin;
+  scrollbar-color: #4f46e5 #1f2937;
+}
+#consoleLog::-webkit-scrollbar {
+  width: 6px;
+}
+#consoleLog::-webkit-scrollbar-track {
+  background: #1f2937;
+  border-radius: 3px;
+}
+#consoleLog::-webkit-scrollbar-thumb {
+  background: #4f46e5;
+  border-radius: 3px;
+}
+
+/* Agent performance cards */
+.agent-card {
+  transition: all 0.3s ease;
+  border-left: 4px solid transparent;
+}
+.agent-card:hover {
+  transform: translateY(-2px);
+  border-left-color: #6366f1;
+  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.15);
+}
+
+/* Results cards enhanced */
+.result-card {
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.result-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #6366f1, transparent);
+  transition: left 0.5s ease;
+}
+.result-card:hover::before {
+  left: 100%;
+}
+
+/* Mobile responsive improvements */
+@media (max-width: 768px) {
+  .max-w-6xl {
+    max-width: 100%;
+    padding: 0 1rem;
+  }
+  
+  .grid.xl\\:grid-cols-3 {
+    grid-template-columns: 1fr;
+  }
+  
+  .text-5xl {
+    font-size: 2.5rem;
+  }
+}
+
+/* Status bar enhancements */
+.status-bar {
+  backdrop-filter: blur(10px);
+  background: rgba(31, 41, 55, 0.9);
+}
+
+/* Interactive elements */
+button:focus {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+
+/* Loading states */
+.loading {
+  position: relative;
+  overflow: hidden;
+}
+.loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  animation: loading 1.5s infinite;
+}
+@keyframes loading {
+  0% { left: -100%; }
+  100% { left: 100%; }
 }
         </style>
     </head>
@@ -707,57 +809,121 @@ def dashboard():
             ⏱️ <span id="lastUpdated">Last Updated: loading...</span>
         </div>
 
-        <div class="max-w-4xl mx-auto py-10 px-4">
-            <h1 class="text-4xl font-bold text-center mb-8 text-indigo-400">
-                ⚙️ ProductForge Agent Dashboard
-            </h1>
+        <div class="max-w-6xl mx-auto py-8 px-4">
+            <!-- Header Section -->
+            <header class="text-center mb-12">
+                <h1 class="text-5xl font-bold text-indigo-400 mb-3">
+                    ⚙️ ProductForge Agent Dashboard
+                </h1>
+                <p class="text-gray-400 text-lg">Multi-Agent AI System • Real-time Processing • Advanced Analytics</p>
+            </header>
 
-            <!-- Task Form -->
-            <form id="taskForm" class="mb-6 p-6 bg-gray-800 rounded-lg shadow-md border border-indigo-600">
-                <label for="job" class="block text-lg font-semibold text-indigo-300 mb-2">Enter your task:</label>
-                <textarea id="job" name="job" rows="3" placeholder="e.g., Analyze UI zip project"
-                    class="w-full p-3 rounded bg-gray-700 text-gray-100 border border-gray-600 focus:outline-none focus:border-indigo-400"></textarea>
-                <div class="flex flex-wrap gap-3 mt-4">
-                    <button type="submit"
-                        class="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition">🚀 Send Task</button>
-                    <button type="button" id="fullOrchestration"
-                        class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg transition">🔄 Full Orchestration</button>
-                    <button type="button" id="exportJson"
-                        class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition">📥 Export JSON</button>
-                    <button type="button" id="exportTxt"
-                        class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition">📝 Export TXT</button>
+            <!-- Main Dashboard Grid -->
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
+                
+                <!-- Left Column: Input Controls -->
+                <div class="xl:col-span-1 space-y-8">
+                    
+                    <!-- Task Submission Panel -->
+                    <div class="bg-gray-800 rounded-xl shadow-lg border border-indigo-600 p-6">
+                        <h2 class="text-2xl font-bold text-indigo-400 mb-6 flex items-center">
+                            🚀 <span class="ml-2">Task Control</span>
+                        </h2>
+                        <form id="taskForm" class="space-y-4">
+                            <div>
+                                <label for="job" class="block text-sm font-semibold text-indigo-300 mb-2">Task Description:</label>
+                                <textarea id="job" name="job" rows="4" 
+                                    placeholder="Enter your AI agent task (e.g., 'Analyze uploaded project', 'Debug code issues', 'Generate report')"
+                                    class="w-full p-4 rounded-lg bg-gray-700 text-gray-100 border border-gray-600 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/50 resize-none transition-all"></textarea>
+                            </div>
+                            <div class="grid grid-cols-1 gap-3">
+                                <button type="submit"
+                                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98]">
+                                    🚀 Send Task
+                                </button>
+                                <button type="button" id="fullOrchestration"
+                                    class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98]">
+                                    🔄 Full Orchestration
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- File Upload Panel -->
+                    <div class="bg-gray-800 rounded-xl shadow-lg border border-indigo-600 p-6">
+                        <h2 class="text-2xl font-bold text-indigo-400 mb-6 flex items-center">
+                            📦 <span class="ml-2">Project Upload</span>
+                        </h2>
+                        <form id="uploadForm" enctype="multipart/form-data" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-indigo-300 mb-2">ZIP File:</label>
+                                <input type="file" id="zipFile" name="file" accept=".zip"
+                                    class="w-full text-sm text-gray-300 bg-gray-700 border border-gray-600 rounded-lg p-3 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 transition-all" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-indigo-300 mb-2">Project Name (Optional):</label>
+                                <input type="text" id="projectName" name="project"
+                                    placeholder="e.g., 'My React App', 'API Backend'"
+                                    class="w-full p-3 rounded-lg bg-gray-700 text-gray-100 border border-gray-600 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/50 transition-all" />
+                            </div>
+                            <button type="submit"
+                                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98]">
+                                ⬆️ Upload & Analyze
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Export Controls Panel -->
+                    <div class="bg-gray-800 rounded-xl shadow-lg border border-indigo-600 p-6">
+                        <h2 class="text-2xl font-bold text-indigo-400 mb-6 flex items-center">
+                            📄 <span class="ml-2">Export Data</span>
+                        </h2>
+                        <div class="grid grid-cols-1 gap-3">
+                            <button id="exportJson"
+                                class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98]">
+                                📥 Export JSON
+                            </button>
+                            <button id="exportTxt"
+                                class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98]">
+                                📝 Export TXT
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            </form>
 
-            <!-- Agent Performance Dashboard -->
-            <div class="mb-6 p-6 bg-gray-800 rounded-lg shadow-md border border-indigo-600">
-                <h2 class="text-2xl font-bold text-indigo-400 mb-4">📊 Agent Performance</h2>
-                <div id="agentPerformance" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                <!-- Middle Column: Live Console -->
+                <div class="xl:col-span-1">
+                    <div class="bg-gray-800 rounded-xl shadow-lg border border-indigo-600 p-6 h-full">
+                        <h2 class="text-2xl font-bold text-indigo-400 mb-6 flex items-center">
+                            🧠 <span class="ml-2">Worker Console</span>
+                        </h2>
+                        <div class="bg-black/50 rounded-lg p-4 h-96">
+                            <pre id="consoleLog" class="text-green-400 text-sm h-full overflow-y-auto font-mono leading-relaxed">
+[💡 ProductForge Worker Console Ready]
+[⚡ Waiting for tasks...]
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Agent Performance -->
+                <div class="xl:col-span-1">
+                    <div class="bg-gray-800 rounded-xl shadow-lg border border-indigo-600 p-6 h-full">
+                        <h2 class="text-2xl font-bold text-indigo-400 mb-6 flex items-center">
+                            📊 <span class="ml-2">Agent Performance</span>
+                        </h2>
+                        <div id="agentPerformance" class="space-y-4 max-h-96 overflow-y-auto"></div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Worker Console -->
-            <div class="p-4 mt-8 bg-gray-800 border border-indigo-600 rounded-lg shadow-md">
-              <h2 class="text-2xl font-semibold text-indigo-400 mb-3">🧠 Worker Console</h2>
-              <pre id="consoleLog" class="text-gray-300 text-sm h-64 overflow-y-auto bg-gray-900 p-3 rounded"></pre>
+            <!-- Results Section (Full Width) -->
+            <div class="bg-gray-800 rounded-xl shadow-lg border border-indigo-600 p-6 mb-8">
+                <h2 class="text-2xl font-bold text-indigo-400 mb-6 flex items-center">
+                    ✨ <span class="ml-2">Live Results</span>
+                </h2>
+                <div id="results" class="space-y-6 max-h-96 overflow-y-auto"></div>
             </div>
-
-            <!-- File Upload -->
-            <form id="uploadForm" enctype="multipart/form-data"
-                  class="p-6 bg-gray-800 rounded-lg shadow-md border border-indigo-600 mb-10 mt-8">
-              <h2 class="text-2xl font-bold text-indigo-400 mb-4">📦 Upload Project ZIP</h2>
-              <input type="file" id="zipFile" name="file" accept=".zip"
-                     class="w-full text-sm text-gray-300 bg-gray-700 border border-gray-600 rounded-lg p-2 mb-4" />
-              <input type="text" id="projectName" name="project"
-                     placeholder="Project name (optional)"
-                     class="w-full text-sm text-gray-300 bg-gray-700 border border-gray-600 rounded-lg p-2 mb-4" />
-              <button type="submit"
-                      class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg transition">
-                ⬆️ Upload & Analyze
-              </button>
-            </form>
-
-            <!-- Results -->
-            <div id="results" class="space-y-6"></div>
 
             <footer class="text-center mt-10 text-gray-500 text-sm">
                 Built by <span class="text-indigo-400 font-medium">Etefworkie Melaku</span> • Powered by FastAPI + OpenAI
@@ -788,59 +954,127 @@ async function loadResults() {
     const config = roleConfig[item.role] || { icon: '⚙️', color: 'text-gray-400' };
     
     const card = document.createElement('div');
-    card.className = `p-6 bg-gray-800 rounded-lg shadow-md border border-indigo-600 fade-in ${glowClass}`;
+    card.className = `result-card p-6 bg-gray-700/50 rounded-xl border border-gray-600 hover:border-indigo-500 fade-in ${glowClass}`;
     card.innerHTML = `
-      <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center gap-2">
-          <span class="text-2xl">${config.icon}</span>
-          <h2 class="text-xl font-semibold ${config.color}">${item.role || 'Task'}</h2>
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="text-3xl p-2 rounded-lg bg-gray-800">${config.icon}</div>
+          <div>
+            <h3 class="text-lg font-bold ${config.color}">${item.role || 'Task'}</h3>
+            <p class="text-xs text-gray-400">${item.agent || 'Unknown Agent'}</p>
+          </div>
         </div>
         <div class="flex gap-2 items-center">
-          ${item.execution_time ? `<span class="text-xs text-gray-400">${item.execution_time}s</span>` : ''}
-          <span class="text-xs text-white px-2 py-1 rounded-full ${statusColor}">
+          ${item.execution_time ? `<span class="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">${item.execution_time}s</span>` : ''}
+          <span class="text-xs text-white px-3 py-1 rounded-full font-semibold ${statusColor}">
             ${status.toUpperCase()}
           </span>
         </div>
       </div>
-      <p class="text-lg text-gray-200 mb-4">${item.job || 'No task description'}</p>
-      <h3 class="text-lg font-semibold text-green-400">💡 Result:</h3>
-      <p class="text-gray-300 whitespace-pre-wrap">${item.output || "⏳ Waiting..."}</p>
-      ${item.workflow_id ? `<p class="text-xs text-indigo-400 mt-2">🔗 Workflow: ${item.workflow_id}</p>` : ''}
-      <p class="text-xs text-gray-500 mt-4 text-right">🌸 ${new Date().toLocaleString()}</p>
+      
+      <div class="mb-4">
+        <h4 class="text-sm font-semibold text-indigo-300 mb-2">📋 Task:</h4>
+        <p class="text-gray-200 bg-gray-800/50 p-3 rounded-lg text-sm">${item.job || 'No task description'}</p>
+      </div>
+      
+      <div class="mb-4">
+        <h4 class="text-sm font-semibold text-green-400 mb-2">💡 Result:</h4>
+        <div class="bg-black/30 p-4 rounded-lg border-l-4 border-green-500">
+          <p class="text-gray-300 whitespace-pre-wrap text-sm leading-relaxed">${item.output || "⏳ Processing..."}</p>
+        </div>
+      </div>
+      
+      <div class="flex justify-between items-center text-xs text-gray-500">
+        <div class="flex gap-4">
+          ${item.workflow_id ? `<span class="text-indigo-400">🔗 ${item.workflow_id.substring(0, 8)}...</span>` : ''}
+          ${item.confidence_score ? `<span class="text-yellow-400">🎯 ${Math.round(item.confidence_score * 100)}%</span>` : ''}
+        </div>
+        <span>⏰ ${new Date().toLocaleString()}</span>
+      </div>
     `;
     resultsDiv.appendChild(card);
   });
 }
 
-// Load Agent Performance
+// Enhanced Agent Performance with Better Visuals
 async function loadAgentPerformance() {
   try {
-    const response = await fetch('/agent_performance');
+    const response = await fetch('/agents');
     const data = await response.json();
     const performanceDiv = document.getElementById('agentPerformance');
     performanceDiv.innerHTML = '';
     
-    Object.entries(data.agent_performance).forEach(([name, stats]) => {
-      const statusColor = stats.status === 'active' ? 'text-green-400' : 'text-gray-400';
-      const card = document.createElement('div');
-      card.className = 'p-4 bg-gray-700 rounded-lg border border-gray-600';
-      card.innerHTML = `
-        <div class="flex items-center justify-between mb-2">
-          <h3 class="text-lg font-semibold text-indigo-300">${name}</h3>
-          <span class="text-sm ${statusColor}">${stats.status}</span>
-        </div>
-        <p class="text-sm text-gray-400 mb-2">Role: ${stats.role}</p>
-        <div class="text-sm space-y-1">
-          <div>✅ Success: ${stats.success_rate}%</div>
-          <div>⚡ Avg Duration: ${stats.average_duration}s</div>
-          <div>📊 Total Tasks: ${stats.total_tasks}</div>
-        </div>
-      `;
-      performanceDiv.appendChild(card);
-    });
+    // Show loading state
+    performanceDiv.innerHTML = '<div class="loading bg-gray-700 rounded-lg p-4 h-20"></div>';
+    
+    setTimeout(() => {
+      performanceDiv.innerHTML = '';
+      
+      if (data.agents && data.agents.length > 0) {
+        data.agents.forEach((agent, index) => {
+          const statusColor = agent.task_count > 0 ? 'text-green-400' : 'text-gray-400';
+          const statusIcon = agent.task_count > 0 ? '🟢' : '⚪';
+          
+          const card = document.createElement('div');
+          card.className = 'agent-card p-4 bg-gray-700/80 rounded-lg border border-gray-600 hover:border-indigo-500 transition-all';
+          card.style.animationDelay = `${index * 0.1}s`;
+          card.innerHTML = `
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="text-lg">${getAgentIcon(agent.role)}</span>
+                <h3 class="text-sm font-bold text-indigo-300">${agent.name}</h3>
+              </div>
+              <span class="text-xs ${statusColor}">${statusIcon}</span>
+            </div>
+            <p class="text-xs text-gray-400 mb-3">${agent.role}</p>
+            <div class="text-xs space-y-1">
+              <div class="flex justify-between">
+                <span>Tasks:</span>
+                <span class="text-indigo-400 font-semibold">${agent.task_count || 0}</span>
+              </div>
+              <div class="flex justify-between">
+                <span>Status:</span>
+                <span class="${statusColor}">${agent.task_count > 0 ? 'Active' : 'Standby'}</span>
+              </div>
+            </div>
+          `;
+          card.classList.add('fade-in');
+          performanceDiv.appendChild(card);
+        });
+      } else {
+        performanceDiv.innerHTML = `
+          <div class="text-center text-gray-400 p-6">
+            <div class="text-3xl mb-2">🤖</div>
+            <p>No agents registered yet</p>
+            <p class="text-xs mt-1">Agents will appear when tasks are submitted</p>
+          </div>
+        `;
+      }
+    }, 800);
+    
   } catch (error) {
     console.error('Failed to load agent performance:', error);
+    const performanceDiv = document.getElementById('agentPerformance');
+    performanceDiv.innerHTML = `
+      <div class="text-center text-red-400 p-4">
+        <div class="text-2xl mb-2">⚠️</div>
+        <p class="text-sm">Failed to load agents</p>
+      </div>
+    `;
   }
+}
+
+// Helper function for agent icons
+function getAgentIcon(role) {
+  const icons = {
+    'Analyze': '🔍',
+    'QA': '✅', 
+    'Debug': '🐛',
+    'Admin': '👥',
+    'Assistant': '🤖',
+    'Analyzer': '🔍'
+  };
+  return icons[role] || '⚙️';
 }
 
 // Enhanced task submission with full orchestration option
@@ -898,16 +1132,117 @@ setInterval(() => {
 loadResults();
 loadAgentPerformance();
 
-// Live Worker Log Stream
+// Enhanced Export Functions
+document.getElementById('exportJson').addEventListener('click', () => {
+  window.open('/export/json', '_blank');
+});
+
+document.getElementById('exportTxt').addEventListener('click', () => {
+  window.open('/export/txt', '_blank');
+});
+
+// Enhanced File Upload Handler
+document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData();
+  const fileInput = document.getElementById('zipFile');
+  const projectName = document.getElementById('projectName').value;
+  
+  if (!fileInput.files[0]) {
+    alert('Please select a ZIP file to upload');
+    return;
+  }
+  
+  formData.append('file', fileInput.files[0]);
+  formData.append('project', projectName);
+  
+  const uploadButton = e.target.querySelector('button[type="submit"]');
+  const originalText = uploadButton.innerHTML;
+  uploadButton.innerHTML = '⏳ Uploading...';
+  uploadButton.disabled = true;
+  
+  try {
+    const response = await fetch('/upload', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      fileInput.value = '';
+      document.getElementById('projectName').value = '';
+      
+      // Add success message to console
+      const consoleLog = document.getElementById('consoleLog');
+      consoleLog.textContent += `[✅ Upload Success] ${result.job_id}\\n`;
+      consoleLog.scrollTop = consoleLog.scrollHeight;
+      
+      loadResults();
+    } else {
+      throw new Error('Upload failed');
+    }
+  } catch (error) {
+    console.error('Upload failed:', error);
+    alert('Upload failed. Please try again.');
+  } finally {
+    uploadButton.innerHTML = originalText;
+    uploadButton.disabled = false;
+  }
+});
+
+// Live Worker Log Stream with Enhanced Features
 const consoleLog = document.getElementById("consoleLog");
-const evtSource = new EventSource("/stream");
-evtSource.onmessage = (event) => {
-  consoleLog.textContent += event.data + "\\n";
-  consoleLog.scrollTop = consoleLog.scrollHeight;
-};
-evtSource.onerror = () => {
-  consoleLog.textContent += "[⚠️ Connection lost, retrying...]\\n";
-};
+let eventSource;
+
+function connectToStream() {
+  if (eventSource) {
+    eventSource.close();
+  }
+  
+  eventSource = new EventSource("/stream");
+  
+  eventSource.onopen = () => {
+    document.getElementById('status').textContent = 'Connected';
+    document.getElementById('status').className = 'text-green-400';
+  };
+  
+  eventSource.onmessage = (event) => {
+    const timestamp = new Date().toLocaleTimeString();
+    consoleLog.textContent += `[${timestamp}] ${event.data}\\n`;
+    consoleLog.scrollTop = consoleLog.scrollHeight;
+    
+    // Update last updated time
+    document.getElementById('lastUpdated').textContent = `Last Updated: ${timestamp}`;
+  };
+  
+  eventSource.onerror = () => {
+    document.getElementById('status').textContent = 'Reconnecting...';
+    document.getElementById('status').className = 'text-yellow-400';
+    consoleLog.textContent += "[⚠️ Connection lost, retrying...]\\n";
+    consoleLog.scrollTop = consoleLog.scrollHeight;
+    
+    // Attempt to reconnect after a delay
+    setTimeout(connectToStream, 3000);
+  };
+}
+
+connectToStream();
+
+// Update status bar periodically
+setInterval(() => {
+  fetch('/system/health')
+    .then(response => response.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        document.getElementById('status').textContent = `Connected (${data.uptime_human})`;
+        document.getElementById('status').className = 'text-green-400';
+      }
+    })
+    .catch(() => {
+      document.getElementById('status').textContent = 'Connection Issues';
+      document.getElementById('status').className = 'text-red-400';
+    });
+}, 30000);
 </script>
 
     </body>
@@ -1420,5 +1755,7 @@ def get_orchestration_status(orchestration_id: str):
 # ===========================
 
 if __name__ == "__main__":
+    import os
+    import uvicorn
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("main:app", host="0.0.0.0", port=port)
