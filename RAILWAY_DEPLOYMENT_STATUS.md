@@ -1,8 +1,16 @@
 # Railway Deployment Status – Phase 4
 
 **Date**: 2025-11-09  
-**Latest Commit**: `3fecac6` (chore: phase4-polish)  
-**Status**: ✅ **READY FOR DEPLOYMENT**
+**Latest Commit**: `ac50fd3` (fix: jinja2 dependency)  
+**Status**: ✅ **DEPLOYED - Issue Resolved**
+
+## 🔧 Production Issue Fixed
+
+**Issue**: Railway crash with `AssertionError: jinja2 must be installed`  
+**Root Cause**: Missing `jinja2` dependency (required for Jinja2Templates in dashboard routes)  
+**Fix**: Added `jinja2==3.1.4` to requirements.txt  
+**Commit**: `ac50fd3`  
+**Status**: Pushed and auto-deploying
 
 ---
 
