@@ -24,9 +24,15 @@ from routes.orchestration_routes import router as orchestration_router
 from routes.result_routes import router as result_router
 from routes.dashboard_routes import router as dashboard_router
 from routes.upload_routes import router as upload_router
+from routes.metrics_routes import router as metrics_router
 
 # Configuration
 from config import settings, validate_environment
+from core.logging_config import get_logger
+from services.deploy_check_service import DeployCheckService
+
+# Initialize logger
+logger = get_logger(__name__)
 
 # ===========================
 # ENVIRONMENT SETUP
@@ -85,67 +91,43 @@ app.add_middleware(APIKeyMiddleware)
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize services on application startup."""
-    print("🚀 ProductForge Backend Starting...")
+    """Initialize services on application startup with comprehensive checks."""
+    logger.info("🚀 ProductForge Backend Starting...")
+    logger.info(f"Environment: {'Railway' if os.environ.get('RAILWAY_ENVIRONMENT') else 'Local'}")
+    logger.info(f"Version: 2.0.0")
     
-    # Validate Redis connection
-    try:
-        redis_client = get_redis_client()
-        redis_client.ping()
-        print("✅ Redis connected successfully")
-    except Exception as e:
-        print(f"⚠️ Redis connection warning: {e}")
+    # Run deployment verification
+    deploy_service = DeployCheckService()
+    verification = await deploy_service.verify_startup()
     
-    # Validate OpenAI API key
-    try:
-        if validate_openai_key():
-            print("✅ OpenAI API key validated")
-        else:
-            print("⚠️ OpenAI API key not configured")
-    except Exception as e:
-        print(f"⚠️ OpenAI API key warning: {e}")
-    
-    print("✅ ProductForge Backend Ready!")
+    if verification["status"] == "healthy":
+        logger.info("✅✅✅ Railway boot OK - All systems operational ✅✅✅")
+    elif verification["status"] == "degraded":
+        logger.warning(f"⚠️ Railway boot DEGRADED - {len(verification['warnings'])} warnings")
+        for warning in verification["warnings"]:
+            logger.warning(f"  ⚠️ {warning}")
+    else:
+        logger.error(f"❌ Railway boot FAILED - {len(verification['warnings'])} errors")
+        for warning in verification["warnings"]:
+            logger.error(f"  ❌ {warning}")
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on application shutdown."""
-    print("👋 ProductForge Backend Shutting Down...")
+    logger.info("👋 ProductForge Backend Shutting Down...")
 
 # ===========================
 # ROUTER REGISTRATION
 # ===========================
 
-# Register all routers with their prefixes and tags
-app.include_router(
-    system_router,
-    tags=["System Health"]
-)
-
-app.include_router(
-    agent_router,
-    tags=["Agent Management"]
-)
-
-app.include_router(
-    orchestration_router,
-    tags=["Workflow Orchestration"]
-)
-
-app.include_router(
-    result_router,
-    tags=["Results & Exports"]
-)
-
-app.include_router(
-    dashboard_router,
-    tags=["Dashboard & UI"]
-)
-
-app.include_router(
-    upload_router,
-    tags=["File Uploads"]
-)
+# Register all routers with their prefixes and tags (clean single-line format)
+app.include_router(system_router, prefix="/system", tags=["System"])
+app.include_router(agent_router, prefix="/agents", tags=["Agents"])
+app.include_router(result_router, prefix="/results", tags=["Results"])
+app.include_router(orchestration_router, tags=["Orchestration"])
+app.include_router(upload_router, prefix="/upload", tags=["File Uploads"])
+app.include_router(metrics_router, prefix="/metrics", tags=["Metrics"])
+app.include_router(dashboard_router, tags=["Dashboard"])
 
 # ===========================
 # ROOT ENDPOINT
