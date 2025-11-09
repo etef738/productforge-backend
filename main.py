@@ -544,11 +544,26 @@ def export_json():
     for key in r.scan_iter("result:*"):
         results.append(json.loads(r.get(key)))
 
-    file_path = "productforge_results.json"
-    with open(file_path, "w") as f:
-        json.dump(results, f, indent=2)
+    # Get most recent task name
+    task_name = "Unknown_Task"
+    if results:
+        latest = sorted(results, key=lambda x: x.get("timestamp", ""), reverse=True)[0]
+        task_name = latest.get("task") or latest.get("job") or "Unknown_Task"
+    # Sanitize for filename
+    safe_task = ''.join(c if c.isalnum() else '_' for c in str(task_name))
+    filename = f"ProductForge_{safe_task}.json"
 
-    return FileResponse(file_path, media_type="application/json", filename="productforge_results.json")
+    # Prepend task info to JSON
+    export_content = {
+        "task": task_name,
+        "results": results
+    }
+    file_path = filename
+    with open(file_path, "w") as f:
+        json.dump(export_content, f, indent=2)
+
+    headers = {"Content-Disposition": f"attachment; filename={filename}"}
+    return FileResponse(file_path, media_type="application/json", filename=filename, headers=headers)
 
 
 @app.get("/export/txt")
@@ -558,8 +573,18 @@ def export_txt():
     for key in r.scan_iter("result:*"):
         results.append(json.loads(r.get(key)))
 
-    file_path = "productforge_results.txt"
+    # Get most recent task name
+    task_name = "Unknown_Task"
+    if results:
+        latest = sorted(results, key=lambda x: x.get("timestamp", ""), reverse=True)[0]
+        task_name = latest.get("task") or latest.get("job") or "Unknown_Task"
+    # Sanitize for filename
+    safe_task = ''.join(c if c.isalnum() else '_' for c in str(task_name))
+    filename = f"ProductForge_{safe_task}.txt"
+
+    file_path = filename
     with open(file_path, "w") as f:
+        f.write(f"## Task: {task_name}\n\n")
         f.write("# 🧠 ProductForge AI Agent Results\n\n")
         for res in results:
             job = res.get("job", "Unknown Task")
@@ -569,7 +594,8 @@ def export_txt():
             f.write(f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
             f.write("---\n\n")
 
-    return FileResponse(file_path, media_type="text/plain", filename="productforge_results.txt")
+    headers = {"Content-Disposition": f"attachment; filename={filename}"}
+    return FileResponse(file_path, media_type="text/plain", filename=filename, headers=headers)
 
 @app.get("/performance/export")
 def export_performance_metrics(format: str = "json"):
@@ -1341,6 +1367,9 @@ setInterval(() => {
 # FILE UPLOAD
 # ===========================
 
+# Railway-compatible upload directory
+UPLOAD_DIR = "/tmp/uploads" if os.environ.get("RAILWAY_ENVIRONMENT") else "workspace/uploads"
+
 @app.post("/upload")
 async def upload_zip(file: UploadFile = File(...), project: str = Form(default="")):
     if not file.filename.endswith(".zip"):
@@ -1348,9 +1377,9 @@ async def upload_zip(file: UploadFile = File(...), project: str = Form(default="
     content = await file.read()
     if len(content) > settings.MAX_UPLOAD_SIZE:
         raise HTTPException(status_code=400, detail="File too large (max 50MB)")
-    
-    os.makedirs("workspace/uploads", exist_ok=True)
-    dst = os.path.join("workspace", "uploads", file.filename)
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    dst = os.path.join(UPLOAD_DIR, file.filename)
     with open(dst, "wb") as f:
         f.write(content)
 
