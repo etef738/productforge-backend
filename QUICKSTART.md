@@ -4,12 +4,7 @@
 
 ### Prerequisites
 - Python 3.9+ installed
-- Redis server running
-- OpenAI API key
-
 ---
-
-## Step 1: Clone & Setup Environment
 
 ```bash
 # Navigate to project directory
@@ -62,7 +57,67 @@ brew services start redis
 
 ### Linux
 ```bash
-sudo systemctl start redis
+## 📊 Analytics & Reporting (Phase 4)
+
+Phase 4 introduces real-time analytics snapshots, 24h trends, and weekly markdown reports.
+
+### Key Endpoints
+```bash
+# KPI snapshot (cached 60s)
+curl -s http://localhost:8000/analytics/summary | jq .
+
+# 24h trend buckets
+curl -s http://localhost:8000/analytics/trends | jq .
+
+# Generate a weekly report (markdown file)
+curl -s -X POST http://localhost:8000/reports/generate | jq .
+
+# List existing reports
+curl -s http://localhost:8000/reports | jq .
+```
+
+### Sample /analytics/summary Output (abridged)
+```json
+{
+  "window": {
+    "d7": {"tasks": 182},
+    "d1": {"tasks": 34},
+    "h1": {"tasks": 2}
+  },
+  "kpis": {
+    "active_agents_count": 5,
+    "avg_redis_latency_ms": 2.7,
+    "cache_hit_ratio": 0.83
+  },
+  "generated_at": "2025-11-09T16:40:00Z"
+}
+```
+
+### Weekly Report Filename Pattern
+`workspace/reports/report_YYYY-MM-DD.md`
+
+Each generation increments the `productforge_reports_generated_total` counter exposed at `/metrics`.
+
+### Dashboard Enhancements
+- Analytics & Trends card (Chart.js line chart + KPIs)
+- Generate Report button triggers POST then shows new filename.
+
+### Prometheus Counters Added
+| Metric | Purpose |
+|--------|---------|
+| productforge_reports_generated_total | Reports produced |
+| productforge_analytics_snapshots_total | Fresh snapshots (cache misses) |
+| productforge_system_health_requests_total | Health endpoint traffic |
+| productforge_system_health_cache_hits | Cached health responses served |
+
+### Quick Regression Suite
+After adding analytics/reporting features:
+```bash
+pytest -q
+```
+Expect majority pass; investigate any failures in legacy tests separately.
+
+---
 ```
 
 ### Docker

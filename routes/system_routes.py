@@ -156,4 +156,5 @@ async def verify_deployment():
         "app_version": "2.0.0",
         "status": raw.get("status", "unknown"),
         "warnings": raw.get("warnings", []),
+        "checks": raw.get("checks", {}),
     }

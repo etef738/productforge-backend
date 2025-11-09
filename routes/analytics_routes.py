@@ -2,7 +2,7 @@
 from fastapi import APIRouter
 from services.analytics_service import AnalyticsService
 
-router = APIRouter(prefix="/analytics", tags=["Analytics"])
+router = APIRouter()
 
 
 @router.get("/summary")

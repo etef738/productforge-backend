@@ -15,7 +15,7 @@ def validate_environment():
 class Settings:
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
-    MAX_UPLOAD_SIZE = int(os.getenv("MAX_UPLOAD_SIZE", 50_000_000))  # 50MB
+    MAX_UPLOAD_SIZE = int(os.getenv("MAX_UPLOAD_SIZE", 10_485_760))  # 10MB default
     ALLOWED_EXTENSIONS = [".zip"]
 
 settings = Settings()

@@ -413,6 +413,74 @@ curl http://localhost:8000/system/health
 - Total result count
 - OpenAI API status
 
+## 📈 Observability & Analytics (Phase 4)
+
+Phase 4 expands beyond static health into rolling analytics, trends, and automated weekly reporting.
+
+### New Components
+**AnalyticsService** – Aggregates 1h/24h/7d task & workflow activity via Redis sorted sets (efficient bucket queries), caches snapshot for 60s (key: `analytics:snapshot`).
+
+**ReportService** – Builds markdown weekly reports (`workspace/reports/report_YYYY-MM-DD.md`) summarizing task counts, agent participation, latency stats; increments Prometheus counter.
+
+### Endpoints Added
+| Endpoint | Description |
+|----------|-------------|
+| `GET /analytics/summary` | Cached KPI + window summary (tasks last 7d/24h/1h, active agents, avg Redis latency, cache hit ratio). |
+| `GET /analytics/trends`  | 24h hourly series for Chart.js line visualization. |
+| `POST /reports/generate` | On-demand weekly report (markdown). |
+| `GET /reports`           | List generated reports (filename + timestamp). |
+
+### Extended Metrics
+New counters/gauges at `/metrics`:
+| Metric | Type | Purpose |
+|--------|------|---------|
+| `productforge_reports_generated_total` | counter | Total weekly reports produced |
+| `productforge_analytics_snapshots_total` | counter | Cache misses generating analytics summary |
+| `productforge_system_health_requests_total` | counter | Health endpoint request volume |
+| `productforge_system_health_cache_hits` | counter | Saved recomputation via caching |
+
+### Dashboard Upgrades
+"Analytics & Trends" card now shows:
+- KPI tiles (Tasks 7d, Active Agents, Avg Redis ms, Cache Hit %)
+- Chart.js line chart (tasks/hour last 24h) – loaded via CDN for simplicity.
+- Generate Report button -> triggers `/reports/generate` and displays result filename.
+
+### Data Flow Example (Analytics Summary)
+```
+GET /analytics/summary
+    ├─ analytics_routes.summary()
+    │   └─ AnalyticsService.get_snapshot()
+    │       ├─ Attempt Redis GET analytics:snapshot
+    │       ├─ If miss: aggregate indices, compute KPIs
+    │       ├─ SETEX snapshot (TTL 60s)
+    │       └─ Increment analytics_snapshots_total
+    └─ Return JSON
+```
+
+### Reporting Flow
+```
+POST /reports/generate
+    ├─ reports_routes.generate()
+    │   └─ ReportService.generate_weekly_report()
+    │       ├─ Determine week range
+    │       ├─ Aggregate tasks/results
+    │       ├─ Write markdown file
+    │       ├─ Increment reports_generated_total
+    │       └─ Return metadata
+    └─ Dashboard updates status text
+```
+
+### Performance / Scalability Notes
+- Snapshot caching prevents repeated heavy aggregation under frequent dashboard polling.
+- Hourly trend buckets precomputed avoid per-request scanning of all events.
+- New counters unlock Prometheus alerting (e.g., sudden zeroing of `analytics_snapshots_total`).
+
+### Future Enhancements
+- Persist historical rollups (Postgres/S3) for >90d trend analysis.
+- PDF export pipeline (headless Chromium or wkhtmltopdf).
+- OpenTelemetry spans around Redis latency hotspots.
+- Agent performance drift detection / scoring.
+
 ---
 
 ## 🛠️ Configuration

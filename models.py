@@ -3,7 +3,8 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
-class EnhancedResult(BaseModel):
+class LegacyEnhancedResult(BaseModel):
+    """Deprecated: Use models.results_models.EnhancedResult. Kept for backward compatibility."""
     job_id: str
     workflow_id: Optional[str] = Field(None, description="Associated workflow ID")
     parent_job_id: Optional[str] = Field(None, description="Parent job if this is a review/follow-up")

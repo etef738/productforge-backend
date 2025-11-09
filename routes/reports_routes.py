@@ -2,7 +2,7 @@
 from fastapi import APIRouter
 from services.report_service import ReportService
 
-router = APIRouter(prefix="/reports", tags=["Reports"])
+router = APIRouter()
 
 
 @router.post("/generate")
