@@ -7,7 +7,9 @@ from fastapi import APIRouter
 from core.redis_client import ping_redis, get_redis_client
 from core.openai_client import validate_openai_key
 from core.utils import get_log_dir, calculate_uptime
+from services.deploy_check_service import DeployCheckService
 from datetime import datetime
+from core.metrics import get_metrics
 import os
 
 router = APIRouter(prefix="/system", tags=["System"])
@@ -57,6 +59,8 @@ async def system_health():
     """
     global _last_health_ts
     now = time.time()
+    metrics = get_metrics()
+    is_cache_hit = now - _last_health_ts <= 5 and _last_health_ts != 0
     if now - _last_health_ts > 5:
         # Invalidate cache by clearing lru
         try:
@@ -65,6 +69,8 @@ async def system_health():
             pass
         _last_health_ts = now
     try:
+        if is_cache_hit:
+            metrics.increment_system_health_cache_hit()
         return _cached_health_snapshot()
     except Exception as e:
         uptime = calculate_uptime(BACKEND_START_TIME)
@@ -115,3 +121,19 @@ async def system_status():
         status["worker_alive"] = False
     
     return status
+
+@router.get("/verify")
+async def verify_deployment():
+    """Comprehensive deployment verification for Railway health checks.
+    
+    Verifies:
+    - Redis connectivity and latency
+    - OpenAI API key configuration
+    - Environment variables
+    - File system access
+    
+    Returns:
+        JSON summary of all verification checks
+    """
+    service = DeployCheckService()
+    return await service.verify_startup()

@@ -3,41 +3,51 @@
 <head>
   <meta charset="UTF-8">
   <title>Help & FAQ – ProductForge Dashboard</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans">
-  <div class="max-w-5xl mx-auto py-8 px-6">
-    <h1 class="text-3xl font-bold mb-6">🧭 Help & FAQ</h1>
-    <p class="text-gray-700 mb-8">Everything you need to know about using ProductForge’s multi-agent orchestration dashboard.</p>
+  <div class="max-w-5xl mx-auto py-10 px-6">
+    <h1 class="text-4xl font-bold mb-6 text-indigo-600">🧭 Help & FAQ</h1>
+    <p class="text-gray-600 mb-8">Everything you need to know about using ProductForge’s multi-agent orchestration dashboard.</p>
 
-    <section class="mb-8">
-      <h2 class="text-2xl font-semibold mb-3">🚀 How to Use</h2>
+    <section class="mb-10">
+      <h2 class="text-2xl font-semibold mb-3">� Overview</h2>
+      <p class="text-gray-700">ProductForge orchestrates multiple specialized AI agents to analyze your codebase, generate insights, and produce structured outputs. Use the dashboard to monitor system health, send tasks, and view results.</p>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-semibold mb-3">�🚀 How to Use Dashboard</h2>
       <ol class="list-decimal list-inside space-y-2 text-gray-800">
         <li><strong>Upload a Project:</strong> Choose a <code>.zip</code> file and wait for the “Upload Complete” message.</li>
-        <li><strong>Send a Task:</strong> Write a clear instruction like “Analyze uploaded project and summarize architecture.”</li>
-        <li><strong>View Results:</strong> See live updates in the results console as agents complete their tasks.</li>
-        <li><strong>Export Reports:</strong> Download your analysis in TXT or JSON format.</li>
+        <li><strong>Send a Task:</strong> e.g. “Analyze uploaded project and summarize architecture.”</li>
+        <li><strong>View Results:</strong> Live updates appear as agents complete tasks.</li>
+        <li><strong>Export Reports:</strong> Download results in TXT or JSON.</li>
       </ol>
     </section>
 
-    <section class="mb-8">
-      <h2 class="text-2xl font-semibold mb-3">🧠 FAQs</h2>
-      <div class="space-y-4">
-        <details><summary><b>Why does my upload sometimes fail?</b></summary><p>Ensure your ZIP file is under 50MB and valid. On Railway, uploads go to <code>/tmp/uploads</code>.</p></details>
-        <details><summary><b>What if I uploaded multiple projects?</b></summary><p>The system uses the latest upload by default. Mention a file name in your task if you want to analyze a specific one.</p></details>
-        <details><summary><b>How do I know the system is healthy?</b></summary><p>The dashboard shows health status for Redis, OpenAI, Worker, and Logs in the System Health panel.</p></details>
-        <details><summary><b>What’s the difference between “Send Task” and “Full Orchestration”?</b></summary><p>“Send Task” runs a single agent; “Full Orchestration” chains multiple agents for deeper analysis.</p></details>
-        <details><summary><b>Where are uploads stored?</b></summary><p>Locally: <code>workspace/uploads</code>; Railway: <code>/tmp/uploads</code>.</p></details>
-      </div>
+    <section class="mb-10">
+      <h2 class="text-2xl font-semibold mb-3">🛠️ Troubleshooting</h2>
+      <ul class="list-disc list-inside space-y-2 text-gray-800">
+        <li><strong>Application failed to respond (Railway):</strong> Check <code>/system/verify</code> for startup checks. Ensure <code>REDIS_URL</code> is set. Use <code>python -m uvicorn main_refactored:app --port $PORT</code> in Procfile.</li>
+        <li><strong>Uploads failing:</strong> Keep ZIP under size limit. On Railway, uploads go to <code>/tmp/uploads</code>. Verify write permissions.</li>
+        <li><strong>OpenAI issues:</strong> Ensure <code>OPENAI_API_KEY</code> is set and valid.</li>
+      </ul>
     </section>
 
-    <section class="mb-8">
-      <h2 class="text-2xl font-semibold mb-3">💡 Tips</h2>
-      <ul class="list-disc list-inside text-gray-800 space-y-1">
-        <li>Wait for “Upload Complete” before sending a task.</li>
-        <li>Use clear task descriptions for best AI results.</li>
-        <li>Use “Full Orchestration” for multi-step project analysis.</li>
-        <li>Refresh the page if health indicators appear stale.</li>
+    <section class="mb-10">
+      <h2 class="text-2xl font-semibold mb-3">❗ Common Errors</h2>
+      <details class="mb-2"><summary class="cursor-pointer font-semibold">Failed Upload</summary><div class="pl-4 text-gray-700">Validate ZIP integrity, check size, and write path. See logs in <code>workspace/logs/app.log</code> or <code>/tmp/logs/app.log</code> on Railway.</div></details>
+      <details class="mb-2"><summary class="cursor-pointer font-semibold">App Not Responding</summary><div class="pl-4 text-gray-700">Open <code>/system/verify</code> and <code>/metrics</code> to diagnose. Check Redis and OpenAI indicators on the dashboard.</div></details>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-semibold mb-3">� System Health & Metrics</h2>
+      <p class="text-gray-700">Use the following endpoints to monitor the system:</p>
+      <ul class="list-disc list-inside text-gray-800">
+        <li><code>/system/health</code> – Quick health snapshot (cached)</li>
+        <li><code>/system/status</code> – Detailed health including OpenAI and worker</li>
+        <li><code>/system/verify</code> – Startup verification (Redis, OpenAI, env vars, filesystem)</li>
+        <li><code>/metrics</code> – Prometheus metrics (uptime, requests, Redis latency)</li>
       </ul>
     </section>
 

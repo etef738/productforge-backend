@@ -95,6 +95,10 @@ async def startup_event():
     logger.info("🚀 ProductForge Backend Starting...")
     logger.info(f"Environment: {'Railway' if os.environ.get('RAILWAY_ENVIRONMENT') else 'Local'}")
     logger.info(f"Version: 2.0.0")
+    # Metrics initialization log
+    from core.metrics import get_metrics
+    _ = get_metrics()
+    logger.info("✅ Metrics ready")
     
     # Run deployment verification
     deploy_service = DeployCheckService()
@@ -120,14 +124,14 @@ async def shutdown_event():
 # ROUTER REGISTRATION
 # ===========================
 
-# Register all routers with their prefixes and tags (clean single-line format)
-app.include_router(system_router, prefix="/system", tags=["System"])
-app.include_router(agent_router, prefix="/agents", tags=["Agents"])
-app.include_router(result_router, prefix="/results", tags=["Results"])
-app.include_router(orchestration_router, tags=["Orchestration"])
-app.include_router(upload_router, prefix="/upload", tags=["File Uploads"])
-app.include_router(metrics_router, prefix="/metrics", tags=["Metrics"])
-app.include_router(dashboard_router, tags=["Dashboard"])
+# Register all routers; most already define their own prefix.
+app.include_router(system_router, tags=["System"])            # router has prefix="/system"
+app.include_router(agent_router, tags=["Agents"])            # router has prefix="/agents"
+app.include_router(result_router, tags=["Results"])          # router has prefix="/results"
+app.include_router(orchestration_router, tags=["Orchestration"])  # routes declare explicit paths
+app.include_router(upload_router, tags=["File Uploads"])     # router has prefix="/upload"
+app.include_router(metrics_router, prefix="/metrics", tags=["Metrics"])  # mounted at /metrics
+app.include_router(dashboard_router, tags=["Dashboard"])     # router has prefix="/dashboard"
 
 # ===========================
 # ROOT ENDPOINT

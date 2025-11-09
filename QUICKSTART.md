@@ -456,3 +456,73 @@ For issues or questions:
 
 **Version**: 2.0.0  
 **Last Updated**: 2025-11-09
+
+---
+
+## 📊 Monitoring and Metrics
+
+Phase 3 adds first-class observability endpoints.
+
+### Health & Verification
+- `GET /system/health` – Cached (5s) snapshot: uptime, Redis, jobs, results.
+- `GET /system/status` – Detailed real-time status (OpenAI key, worker heartbeat, log presence).
+- `GET /system/verify` – Full startup verification (Redis latency, OpenAI key, env vars, templates, filesystem).
+
+### Metrics Endpoints
+- `GET /metrics` – Prometheus exposition format.
+- `GET /metrics/json` – JSON struct for dashboards.
+
+### Prometheus Sample Output (truncated)
+```
+# HELP productforge_uptime_seconds Application uptime in seconds
+# TYPE productforge_uptime_seconds gauge
+productforge_uptime_seconds 32.15
+# HELP productforge_total_requests Total HTTP requests processed
+# TYPE productforge_total_requests counter
+productforge_total_requests 18
+# HELP productforge_redis_latency_ms Last Redis operation latency in milliseconds
+# TYPE productforge_redis_latency_ms gauge
+productforge_redis_latency_ms 2.91
+```
+
+### JSON Metrics Fields
+| Field | Description |
+|-------|-------------|
+| uptime_seconds | Seconds since process start |
+| total_requests | Total HTTP requests handled |
+| active_workflows | Current active workflow count |
+| redis_latency_ms | Last measured Redis latency |
+| redis_operations | Total Redis ops recorded |
+| system_health_cache_hits | Cache hits for `/system/health` |
+
+### Quick Curl Examples
+```bash
+curl -s http://localhost:8000/system/verify | jq .
+curl -s http://localhost:8000/metrics
+curl -s http://localhost:8000/metrics/json | jq .
+```
+
+### Adding Prometheus (Optional)
+Add a scrape job in your Prometheus config:
+```yaml
+scrape_configs:
+  - job_name: productforge
+    static_configs:
+      - targets: ['localhost:8000']
+    metrics_path: /metrics
+```
+
+### Alert Ideas (Future)
+| Metric | Condition | Action |
+|--------|-----------|--------|
+| redis_latency_ms | >50ms for 5m | Investigate Redis performance |
+| uptime_seconds | Drops to <60 unexpectedly | Restart detection / crash loop |
+| total_requests | Flat, expected traffic | Check ingress / networking |
+
+### Troubleshooting Metrics
+If `/metrics` is empty:
+1. Confirm server started (check logs for `✅ Metrics ready`).
+2. Ensure no reverse proxy blocking plain text.
+3. Access JSON endpoint for structure debugging.
+
+---
