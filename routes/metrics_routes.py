@@ -21,6 +21,13 @@ async def prometheus_metrics():
     return metrics.to_prometheus_format()
 
 
+@router.get("", response_class=PlainTextResponse)
+async def prometheus_metrics_noslash():
+    """Support /metrics without trailing slash to avoid redirects."""
+    metrics = get_metrics()
+    return metrics.to_prometheus_format()
+
+
 @router.get("/json")
 async def json_metrics():
     """Export metrics as JSON for dashboards.

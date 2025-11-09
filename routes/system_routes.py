@@ -136,4 +136,23 @@ async def verify_deployment():
         JSON summary of all verification checks
     """
     service = DeployCheckService()
-    return await service.verify_startup()
+    raw = await service.verify_startup()
+    checks = raw.get("checks", {})
+    # Derive summary fields
+    redis_ok = (checks.get("redis", {}).get("status") == "ok")
+    openai_ok = (checks.get("openai", {}).get("status") == "ok") and checks.get("openai", {}).get("configured", False)
+    env = checks.get("environment", {})
+    env_vars_count = sum(1 for v in env.values() if v == "set")
+    templates_count = checks.get("filesystem", {}).get("templates", 0)
+    # Uptime from local tracker
+    uptime_seconds = int(time.time() - BACKEND_START_TIME)
+    return {
+        "redis_ok": redis_ok,
+        "openai_ok": openai_ok,
+        "env_vars_count": env_vars_count,
+        "templates_count": templates_count,
+        "uptime": uptime_seconds,
+        "app_version": "2.0.0",
+        "status": raw.get("status", "unknown"),
+        "warnings": raw.get("warnings", []),
+    }
