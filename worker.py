@@ -153,6 +153,9 @@ def main():
             end_time = time.time()
             exec_time = round(end_time - start_time, 2)
 
+
+            # Preserve original task description
+            task_description = job.get("job") or job.get("task") or "Unknown Task"
             result = EnhancedResult(
                 job_id=job_id,
                 agent=agent_name,
@@ -165,6 +168,11 @@ def main():
                 completed_at=datetime.fromtimestamp(end_time).isoformat(),
                 execution_time=exec_time
             )
+            # Inject 'task' field into result dict before saving to Redis
+            result_dict = result.model_dump()
+            result_dict["task"] = task_description
+            r.setex(f"result:{job_id}", 3600, json.dumps(result_dict))
+            log(f"✅ Result saved for job {job_id} ({role}) — {status} in {exec_time}s")
 
             r.setex(f"result:{job_id}", 3600, result.model_dump_json())
             log(f"✅ Result saved for job {job_id} ({role}) — {status} in {exec_time}s")

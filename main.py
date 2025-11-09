@@ -393,9 +393,12 @@ def get_results():
     results = []
     for key in r.scan_iter("result:*"):
         result = json.loads(r.get(key))
-        # Add agent role and status for better display
+        # Ensure 'task' field is present for dashboard display
+        if "task" not in result:
+            # Try to infer from job/job_id if possible
+            result["task"] = result.get("job", result.get("job_id", "Unknown Task"))
         results.append(result)
-    
+
     # Sort by timestamp and return latest 10
     sorted_results = sorted(results, key=lambda x: x.get("timestamp", ""), reverse=True)
     return {
