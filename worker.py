@@ -114,10 +114,14 @@ def handle_workflow(result: EnhancedResult):
 # =====================================
 # MAIN WORKER LOOP
 # =====================================
+def send_heartbeat():
+    r.set("worker:heartbeat", str(time.time()), ex=60)  # expires after 60s
+
 def main():
     log("🧠 Multi-Agent Worker started and connected to Redis...")
 
     while True:
+        send_heartbeat()
         try:
             job_data = r.brpop("queue", timeout=5)
             if not job_data:

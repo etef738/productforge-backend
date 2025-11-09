@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI, BackgroundTasks, UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -75,6 +76,60 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ===========================
+# SYSTEM HEALTH ENDPOINT
+# ===========================
+from fastapi import HTTPException
+import openai
+import redis
+import time
+
+@app.get("/system/status")
+async def system_status():
+    """Return current system health indicators for dashboard."""
+
+    status = {
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "redis_connected": False,
+        "openai_key_active": False,
+        "worker_log_active": False,
+        "worker_alive": False,
+    }
+
+    # ✅ Check Redis connection
+    try:
+        r = redis.from_url(os.getenv("REDIS_URL"))
+        r.ping()
+        status["redis_connected"] = True
+    except Exception:
+        status["redis_connected"] = False
+
+    # ✅ Check OpenAI key validity
+    try:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if api_key and api_key.startswith("sk-"):
+            openai.api_key = api_key
+            status["openai_key_active"] = True
+    except Exception:
+        status["openai_key_active"] = False
+
+    # ✅ Check worker log file existence
+    base_dir = "/tmp/logs" if os.environ.get("RAILWAY_ENVIRONMENT") else "workspace/logs"
+    log_path = os.path.join(base_dir, "worker_log.txt")
+    status["worker_log_active"] = os.path.exists(log_path)
+
+    # ✅ Check if worker is alive via Redis queue heartbeat
+    try:
+        heartbeat_key = "worker:heartbeat"
+        last_heartbeat = r.get(heartbeat_key)
+        if last_heartbeat:
+            status["worker_alive"] = True
+    except Exception:
+        status["worker_alive"] = False
+
+    return status
+
 
 # ===========================
 # AGENT ORCHESTRATION HELPERS
@@ -809,7 +864,14 @@ button:focus {
             ⏱️ <span id="lastUpdated">Last Updated: loading...</span>
         </div>
 
-        <div class="max-w-6xl mx-auto py-8 px-4">
+                <div class="max-w-6xl mx-auto py-8 px-4">
+                        <!-- System Health Widget -->
+                        <div id="healthStatus" class="p-4 rounded-xl bg-gray-900 shadow-lg mb-4">
+                            <h2 class="text-xl font-bold mb-2">🩺 System Health</h2>
+                            <ul class="space-y-1 text-sm" id="healthList">
+                                <li>Checking system status...</li>
+                            </ul>
+                        </div>
             <!-- Header Section -->
             <header class="text-center mb-12">
                 <h1 class="text-5xl font-bold text-indigo-400 mb-3">
@@ -928,7 +990,29 @@ button:focus {
             <footer class="text-center mt-10 text-gray-500 text-sm">
                 Built by <span class="text-indigo-400 font-medium">Etefworkie Melaku</span> • Powered by FastAPI + OpenAI
             </footer>
-        </div>
+                </div>
+                <script>
+                async function updateHealth() {
+                    const list = document.getElementById("healthList");
+                    try {
+                        const res = await fetch("/system/status");
+                        const data = await res.json();
+
+                        list.innerHTML = `
+                            <li>${data.redis_connected ? '✅ Redis connected' : '❌ Redis offline'}</li>
+                            <li>${data.openai_key_active ? '✅ OpenAI key detected' : '⚠️ OpenAI key missing'}</li>
+                            <li>${data.worker_alive ? '🟢 Worker alive' : '🔴 Worker not responding'}</li>
+                            <li>${data.worker_log_active ? '📄 Log file active' : '🕓 Waiting for logs...'}</li>
+                            <li class="text-xs text-gray-500 mt-1">Last checked: ${data.timestamp}</li>
+                        `;
+                    } catch (e) {
+                        list.innerHTML = `<li>⚠️ Error fetching status</li>`;
+                    }
+                }
+
+                setInterval(updateHealth, 10000);
+                updateHealth();
+                </script>
 
 <script>
 // Enhanced Results with Workflow Visualization
