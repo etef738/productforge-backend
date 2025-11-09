@@ -13,8 +13,14 @@ load_dotenv()
 r = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"))
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-LOG_PATH = "workspace/logs/worker_log.txt"
-os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
+# =====================================
+# LOG PATH (Railway + Local Compatible)
+# Uses /tmp/logs on Railway (always writable) else workspace/logs locally.
+# Mirrors logic in main.py /stream endpoint for consistency.
+# =====================================
+BASE_LOG_DIR = "/tmp/logs" if os.environ.get("RAILWAY_ENVIRONMENT") else "workspace/logs"
+os.makedirs(BASE_LOG_DIR, exist_ok=True)
+LOG_PATH = os.path.join(BASE_LOG_DIR, "worker_log.txt")
 
 
 # =====================================

@@ -1285,17 +1285,29 @@ async def upload_zip(file: UploadFile = File(...), project: str = Form(default="
 
 @app.get("/stream")
 async def stream_logs():
-    """Stream live worker logs from log.txt file."""
-    log_file = "workspace/logs/worker_log.txt"
-    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+    """Stream live worker logs (Railway + local compatible)."""
+
+    import os, asyncio
+    from fastapi.responses import StreamingResponse
+
+    # ✅ Use /tmp/logs for Railway (always writable) or fallback to local
+    base_dir = "/tmp/logs" if os.environ.get("RAILWAY_ENVIRONMENT") else "workspace/logs"
+    os.makedirs(base_dir, exist_ok=True)
+    log_file = os.path.join(base_dir, "worker_log.txt")
 
     async def event_stream():
+        # ✅ If file doesn’t exist yet, wait until it’s created
+        while not os.path.exists(log_file):
+            yield "data: [Waiting for worker log file to be created...]\n\n"
+            await asyncio.sleep(1)
+
+        # ✅ Stream the live log updates
         with open(log_file, "r") as f:
             f.seek(0, os.SEEK_END)
             while True:
                 line = f.readline()
                 if line:
-                    yield f"data: {line.strip()}\\n\\n"
+                    yield f"data: {line.strip()}\n\n"
                 await asyncio.sleep(0.5)
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
