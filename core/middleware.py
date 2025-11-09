@@ -1,7 +1,7 @@
 """Structured logging middleware with daily log rotation.
 
 Logs a single concise line per request in production format:
-  <ts> method=GET path=/system/health status=200 duration_ms=12.34 ip=127.0.0.1
+  <ts> method=GET path=/system/health status=200 duration_ms=12.34 ip=127.0.0.1 request_id=abc123
 
 Files are rotated daily into either:
   - workspace/logs/app.log (local)
@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 import os
 import time
+import uuid
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 from typing import Callable
@@ -19,6 +20,7 @@ from typing import Callable
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
+from core.metrics import get_metrics
 
 
 def _ensure_logger() -> logging.Logger:
@@ -34,7 +36,10 @@ def _ensure_logger() -> logging.Logger:
     log_path = os.path.join(base_dir, "app.log")
 
     handler = TimedRotatingFileHandler(log_path, when="midnight", backupCount=7, encoding="utf-8")
-    formatter = logging.Formatter("%(asctime)s method=%(method)s path=%(path)s status=%(status)d duration_ms=%(duration).2f ip=%(ip)s")
+    formatter = logging.Formatter(
+        "%(asctime)s method=%(method)s path=%(path)s status=%(status)d "
+        "duration_ms=%(duration).2f ip=%(ip)s request_id=%(request_id)s"
+    )
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
@@ -47,13 +52,17 @@ def _ensure_logger() -> logging.Logger:
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
-    """FastAPI/Starlette middleware that logs method, path, status, and duration."""
+    """FastAPI/Starlette middleware that logs method, path, status, duration, and request ID."""
 
     def __init__(self, app):
         super().__init__(app)
         self.logger = _ensure_logger()
+        self.metrics = get_metrics()
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        # Generate or extract request ID
+        request_id = request.headers.get("x-request-id", str(uuid.uuid4())[:8])
+        
         start = time.perf_counter()
         try:
             response = await call_next(request)
@@ -65,6 +74,10 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         finally:
             duration_ms = (time.perf_counter() - start) * 1000
             ip = request.client.host if request.client else "-"
+            
+            # Increment metrics counter
+            self.metrics.increment_requests()
+            
             # Supply extra attributes for the formatter
             self.logger.info(
                 "request",
@@ -74,6 +87,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                     "status": status,
                     "duration": duration_ms,
                     "ip": ip,
+                    "request_id": request_id,
                 },
             )
         return response

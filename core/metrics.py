@@ -18,6 +18,9 @@ class MetricsCollector:
         self._redis_operations = 0
         self._last_redis_latency_ms = 0.0
         self._system_health_cache_hits = 0
+        self._system_health_requests_total = 0
+        self._reports_generated_total = 0
+        self._analytics_snapshots_total = 0
         
     def increment_requests(self):
         """Increment total request counter."""
@@ -35,6 +38,18 @@ class MetricsCollector:
     def increment_system_health_cache_hit(self):
         """Increment system health cache hit counter."""
         self._system_health_cache_hits += 1
+
+    def increment_system_health_request(self):
+        """Increment system health total requests counter."""
+        self._system_health_requests_total += 1
+
+    def increment_reports_generated(self):
+        """Increment total reports generated counter."""
+        self._reports_generated_total += 1
+
+    def increment_analytics_snapshots(self):
+        """Increment total analytics snapshots counter."""
+        self._analytics_snapshots_total += 1
     
     def get_uptime_seconds(self) -> float:
         """Get application uptime in seconds."""
@@ -73,6 +88,18 @@ class MetricsCollector:
             "# TYPE productforge_system_health_cache_hits counter",
             f"productforge_system_health_cache_hits {self._system_health_cache_hits}",
             "",
+            "# HELP productforge_system_health_requests_total Total /system/health requests",
+            "# TYPE productforge_system_health_requests_total counter",
+            f"productforge_system_health_requests_total {self._system_health_requests_total}",
+            "",
+            "# HELP productforge_reports_generated_total Total reports generated",
+            "# TYPE productforge_reports_generated_total counter",
+            f"productforge_reports_generated_total {self._reports_generated_total}",
+            "",
+            "# HELP productforge_analytics_snapshots_total Total analytics snapshots created",
+            "# TYPE productforge_analytics_snapshots_total counter",
+            f"productforge_analytics_snapshots_total {self._analytics_snapshots_total}",
+            "",
         ]
         
         return "\n".join(lines)
@@ -86,6 +113,9 @@ class MetricsCollector:
             "redis_latency_ms": round(self._last_redis_latency_ms, 2),
             "redis_operations": self._redis_operations,
             "system_health_cache_hits": self._system_health_cache_hits,
+            "system_health_requests_total": self._system_health_requests_total,
+            "reports_generated_total": self._reports_generated_total,
+            "analytics_snapshots_total": self._analytics_snapshots_total,
             "timestamp": datetime.now().isoformat()
         }
 

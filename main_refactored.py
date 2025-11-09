@@ -25,6 +25,8 @@ from routes.result_routes import router as result_router
 from routes.dashboard_routes import router as dashboard_router
 from routes.upload_routes import router as upload_router
 from routes.metrics_routes import router as metrics_router
+from routes.analytics_routes import router as analytics_router
+from routes.reports_routes import router as reports_router
 
 # Configuration
 from config import settings, validate_environment
@@ -132,6 +134,8 @@ app.include_router(orchestration_router, tags=["Orchestration"])  # routes decla
 app.include_router(upload_router, tags=["File Uploads"])     # router has prefix="/upload"
 app.include_router(metrics_router, prefix="/metrics", tags=["Metrics"])  # mounted at /metrics
 app.include_router(dashboard_router, tags=["Dashboard"])     # router has prefix="/dashboard"
+app.include_router(analytics_router, prefix="/analytics", tags=["Analytics"])
+app.include_router(reports_router, prefix="/reports", tags=["Reports"])
 
 # ===========================
 # ROOT ENDPOINT

@@ -50,6 +50,35 @@
                     <p><a href="/metrics" class="text-indigo-400 hover:text-indigo-300 underline">View Prometheus Metrics →</a></p>
                 </div>
             </div>
+
+            <!-- Analytics & Trends Card -->
+            <div class="bg-gray-800 rounded-xl p-6 border border-indigo-600 col-span-1 md:col-span-2 lg:col-span-2">
+                <h2 class="text-xl font-bold text-indigo-400 mb-4 flex items-center gap-2">📊 Analytics & Trends</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4" id="analyticsKPIs">
+                    <div class="p-3 bg-gray-700 rounded">
+                        <p class="text-xs text-gray-300">Tasks (7d)</p>
+                        <p class="text-lg font-semibold" id="kpiTasks7d">--</p>
+                    </div>
+                    <div class="p-3 bg-gray-700 rounded">
+                        <p class="text-xs text-gray-300">Agents Active</p>
+                        <p class="text-lg font-semibold" id="kpiAgents">--</p>
+                    </div>
+                    <div class="p-3 bg-gray-700 rounded">
+                        <p class="text-xs text-gray-300">Avg Redis ms</p>
+                        <p class="text-lg font-semibold" id="kpiRedisLatency">--</p>
+                    </div>
+                    <div class="p-3 bg-gray-700 rounded">
+                        <p class="text-xs text-gray-300">Cache Hit %</p>
+                        <p class="text-lg font-semibold" id="kpiCacheHit">--</p>
+                    </div>
+                </div>
+                <canvas id="trendChart" height="90" class="mb-4"></canvas>
+                <div class="flex justify-between items-center">
+                    <a href="/analytics/trends" class="text-indigo-400 hover:text-indigo-300 text-sm underline">Full Trend JSON →</a>
+                    <button id="generateReportBtn" class="bg-indigo-600 hover:bg-indigo-500 text-sm px-4 py-2 rounded">Generate Report</button>
+                </div>
+                <p id="reportStatus" class="text-xs text-gray-400 mt-2"></p>
+            </div>
         </div>
 
         <div class="mt-8 text-center">
@@ -103,17 +132,76 @@
             document.getElementById('redisLatency').textContent = data.redis_latency_ms;
         }
 
-        loadHealth();
-        loadAgents();
-        loadResults();
-        loadMetrics();
+        async function loadAnalytics() {
+            const res = await fetch('/analytics/summary');
+            const data = await res.json();
+            document.getElementById('kpiTasks7d').textContent = data.window.d7.tasks;
+            document.getElementById('kpiAgents').textContent = data.kpis.active_agents_count;
+            document.getElementById('kpiRedisLatency').textContent = data.kpis.avg_redis_latency_ms;
+            document.getElementById('kpiCacheHit').textContent = (data.kpis.cache_hit_ratio * 100).toFixed(1) + '%';
+        }
+
+        async function loadTrendChart() {
+            const res = await fetch('/analytics/trends');
+            const data = await res.json();
+            const labels = data.series.map(p => p.t);
+            const values = data.series.map(p => p.count);
+            if (window.trendChartInstance) {
+                window.trendChartInstance.data.labels = labels;
+                window.trendChartInstance.data.datasets[0].data = values;
+                window.trendChartInstance.update();
+                return;
+            }
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            window.trendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Tasks / Hour (24h)',
+                        data: values,
+                        borderColor: 'rgba(99,102,241,0.9)',
+                        backgroundColor: 'rgba(99,102,241,0.2)',
+                        tension: 0.25,
+                        fill: true,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    plugins: {legend: {display: false}},
+                    scales: {y: {beginAtZero: true, grid: {color: '#374151'}}, x: {grid: {display: false}}},
+                }
+            });
+        }
+
+        async function generateReport() {
+            const btn = document.getElementById('generateReportBtn');
+            const statusEl = document.getElementById('reportStatus');
+            btn.disabled = true;
+            statusEl.textContent = 'Generating report...';
+            const res = await fetch('/reports/generate', {method: 'POST'});
+            const data = await res.json();
+            statusEl.textContent = 'Report created: ' + data.filename;
+            btn.disabled = false;
+        }
+
+        document.getElementById('generateReportBtn').addEventListener('click', generateReport);
+
+    loadHealth();
+    loadAgents();
+    loadResults();
+    loadMetrics();
+    loadAnalytics();
+    loadTrendChart();
 
         setInterval(() => {
             loadHealth();
             loadAgents();
             loadResults();
             loadMetrics();
-        }, 10000);
+            loadAnalytics();
+            loadTrendChart();
+        }, 15000);
     </script>
 </body>
 </html>

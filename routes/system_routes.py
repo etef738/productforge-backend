@@ -60,6 +60,7 @@ async def system_health():
     global _last_health_ts
     now = time.time()
     metrics = get_metrics()
+    metrics.increment_system_health_request()
     is_cache_hit = now - _last_health_ts <= 5 and _last_health_ts != 0
     if now - _last_health_ts > 5:
         # Invalidate cache by clearing lru

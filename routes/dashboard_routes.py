@@ -26,3 +26,8 @@ async def dashboard(request: Request):
 async def help_page(request: Request):
     """Serve the help and FAQ page."""
     return templates.TemplateResponse("help.html", {"request": request})
+
+@router.get("/reports", response_class=HTMLResponse)
+async def reports_page(request: Request):
+    """Serve the generated reports listing page."""
+    return templates.TemplateResponse("reports.html", {"request": request})
