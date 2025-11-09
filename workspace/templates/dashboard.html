@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProductForge AI Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans min-h-screen">
+    <div class="max-w-6xl mx-auto py-8 px-4">
+        <header class="text-center mb-12">
+            <h1 class="text-5xl font-bold text-indigo-400 mb-3">
+                ⚙️ ProductForge AI Dashboard
+            </h1>
+            <p class="text-gray-400 text-lg">Multi-Agent AI System • Enterprise Architecture • v2.0</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- System Health Card -->
+            <div class="bg-gray-800 rounded-xl p-6 border border-indigo-600">
+                <h2 class="text-xl font-bold text-indigo-400 mb-4">🩺 System Health</h2>
+                <div id="healthStatus" class="text-sm space-y-2">
+                    <p>Loading...</p>
+                </div>
+            </div>
+
+            <!-- Agents Card -->
+            <div class="bg-gray-800 rounded-xl p-6 border border-indigo-600">
+                <h2 class="text-xl font-bold text-indigo-400 mb-4">🤖 Agents</h2>
+                <div id="agentsList" class="text-sm space-y-2">
+                    <p>Loading...</p>
+                </div>
+            </div>
+
+            <!-- Results Card -->
+            <div class="bg-gray-800 rounded-xl p-6 border border-indigo-600">
+                <h2 class="text-xl font-bold text-indigo-400 mb-4">📊 Recent Results</h2>
+                <div id="resultsList" class="text-sm space-y-2">
+                    <p>Loading...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 text-center">
+            <a href="/dashboard/help" class="text-indigo-400 hover:text-indigo-300">❓ Help & FAQ</a>
+        </div>
+    </div>
+
+    <script>
+        async function loadHealth() {
+            const res = await fetch('/system/health');
+            const data = await res.json();
+            document.getElementById('healthStatus').innerHTML = `
+                <p>✅ Status: ${data.status}</p>
+                <p>⏱️ Uptime: ${data.uptime_human}</p>
+                <p>🔗 Redis: ${data.redis_connected ? 'Connected' : 'Disconnected'}</p>
+                <p>📋 Active Jobs: ${data.active_jobs}</p>
+            `;
+        }
+
+        async function loadAgents() {
+            const res = await fetch('/agents/');
+            const data = await res.json();
+            const html = data.slice(0, 5).map(a => 
+                `<p>🤖 ${a.name} (${a.role}) - ${a.task_count} tasks</p>`
+            ).join('');
+            document.getElementById('agentsList').innerHTML = html || '<p>No agents</p>';
+        }
+
+        async function loadResults() {
+            const res = await fetch('/results/?limit=5');
+            const data = await res.json();
+            const html = data.slice(0, 5).map(r => 
+                `<p>📋 ${r.agent}: ${r.status}</p>`
+            ).join('');
+            document.getElementById('resultsList').innerHTML = html || '<p>No results</p>';
+        }
+
+        loadHealth();
+        loadAgents();
+        loadResults();
+
+        setInterval(() => {
+            loadHealth();
+            loadAgents();
+            loadResults();
+        }, 10000);
+    </script>
+</body>
+</html>

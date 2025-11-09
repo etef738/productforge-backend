@@ -1,0 +1,117 @@
+"""
+System health and status routes.
+"""
+import time
+from functools import lru_cache
+from fastapi import APIRouter
+from core.redis_client import ping_redis, get_redis_client
+from core.openai_client import validate_openai_key
+from core.utils import get_log_dir, calculate_uptime
+from datetime import datetime
+import os
+
+router = APIRouter(prefix="/system", tags=["System"])
+
+# Track backend startup time
+BACKEND_START_TIME = time.time()
+
+
+@router.get("/ping")
+async def ping():
+    """Ping endpoint to check if system is alive."""
+    return {"status": "ok", "module": "system", "timestamp": datetime.now().isoformat()}
+
+
+@lru_cache(maxsize=1)
+def _cached_health_snapshot() -> dict:
+    """Cached snapshot of system health (5s TTL managed by manual invalidation)."""
+    redis_client = get_redis_client()
+    redis_connected = ping_redis()
+    active_jobs = redis_client.llen("queue")
+    for queue in ["queue_high", "queue_low"]:
+        active_jobs += redis_client.llen(queue)
+    # Use index cardinality for results count for speed
+    try:
+        total_results = int(redis_client.zcard("results_index"))
+    except Exception:
+        total_results = 0
+    uptime = calculate_uptime(BACKEND_START_TIME)
+    return {
+        "status": "ok",
+        "uptime_seconds": uptime["seconds"],
+        "uptime_human": uptime["human"],
+        "redis_connected": redis_connected,
+        "active_jobs": active_jobs,
+        "total_results": total_results,
+        "timestamp": datetime.now().isoformat(),
+        "version": "Enterprise Refactor v2.0"
+    }
+
+_last_health_ts: float = 0.0
+
+
+@router.get("/health")
+async def system_health():
+    """Enhanced system health check with uptime and Redis status.
+    Cached for 5 seconds to reduce Redis load.
+    """
+    global _last_health_ts
+    now = time.time()
+    if now - _last_health_ts > 5:
+        # Invalidate cache by clearing lru
+        try:
+            _cached_health_snapshot.cache_clear()  # type: ignore[attr-defined]
+        except Exception:
+            pass
+        _last_health_ts = now
+    try:
+        return _cached_health_snapshot()
+    except Exception as e:
+        uptime = calculate_uptime(BACKEND_START_TIME)
+        return {
+            "status": "error",
+            "uptime_seconds": uptime["seconds"],
+            "redis_connected": False,
+            "active_jobs": 0,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
+
+@router.get("/status")
+async def system_status():
+    """Return current system health indicators for dashboard."""
+    redis_client = get_redis_client()
+    
+    status = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "redis_connected": False,
+        "openai_key_active": False,
+        "worker_log_active": False,
+        "worker_alive": False,
+    }
+    
+    # Check Redis connection
+    try:
+        status["redis_connected"] = ping_redis()
+    except Exception:
+        status["redis_connected"] = False
+    
+    # Check OpenAI key validity
+    status["openai_key_active"] = validate_openai_key()
+    
+    # Check worker log file existence
+    log_dir = get_log_dir()
+    log_path = os.path.join(log_dir, "worker_log.txt")
+    status["worker_log_active"] = os.path.exists(log_path)
+    
+    # Check if worker is alive via Redis queue heartbeat
+    try:
+        heartbeat_key = "worker:heartbeat"
+        last_heartbeat = redis_client.get(heartbeat_key)
+        if last_heartbeat:
+            status["worker_alive"] = True
+    except Exception:
+        status["worker_alive"] = False
+    
+    return status

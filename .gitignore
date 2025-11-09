@@ -1,7 +1,49 @@
+# Virtual environment
 .venv/
+productforge_env/
+
+# Python cache
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Environment and secrets
+.env
+.env.local
+
+# Uploads and logs
 workspace/uploads/
 workspace/logs/
-.env
-*.pyc
+*.log
+
+# Archives
 *.zip
+*.tar.gz
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.backup
+*.bak
+*.old
+
+# Test coverage
+htmlcov/
+.coverage
+.pytest_cache/
+
+# Distribution
+dist/
+build/
+*.egg-info/
