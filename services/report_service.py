@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import time
 import os
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, Any, List
 
 from services.analytics_service import AnalyticsService
@@ -30,7 +30,7 @@ class ReportService:
         """Generate a weekly report markdown file and return file metadata."""
         snapshot = self.analytics.compute_snapshot()
         metrics_dict = self.metrics.to_dict()
-        ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         filename = f"weekly_report_{ts}.md"
         path = os.path.join(REPORT_DIR, filename)
 
@@ -74,6 +74,6 @@ class ReportService:
                     "filename": fname,
                     "path": full,
                     "size": os.path.getsize(full),
-                    "modified": datetime.utcfromtimestamp(os.path.getmtime(full)).isoformat() + "Z"
+                    "modified": datetime.fromtimestamp(os.path.getmtime(full), UTC).isoformat() + "Z"
                 })
         return entries
