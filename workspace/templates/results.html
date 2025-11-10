@@ -1,0 +1,37 @@
+{% include 'partials_nav.html' %}
+<section class="max-w-6xl mx-auto">
+  <h1 class="text-3xl font-bold mb-4">📊 Results</h1>
+
+  <div class="flex gap-3 mb-4">
+    <a href="/results/export/json" class="px-3 py-1 bg-gray-800 border border-gray-600 rounded hover:bg-gray-700 text-sm">Export JSON</a>
+    <a href="/results/export/txt" class="px-3 py-1 bg-gray-800 border border-gray-600 rounded hover:bg-gray-700 text-sm">Export TXT</a>
+    <a href="/results/performance/export" class="px-3 py-1 bg-gray-800 border border-gray-600 rounded hover:bg-gray-700 text-sm">Performance (JSON)</a>
+  </div>
+
+  {% if results and results|length > 0 %}
+  <table class="w-full text-sm border border-gray-700 rounded overflow-hidden">
+    <thead class="bg-gray-700">
+      <tr>
+        <th class="p-2 text-left">Job ID</th>
+        <th class="p-2 text-left">Task</th>
+        <th class="p-2 text-left">Agent</th>
+        <th class="p-2 text-left">Status</th>
+        <th class="p-2 text-left">Created</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in results %}
+      <tr class="border-t border-gray-700">
+        <td class="p-2 font-mono text-xs"><a class="text-indigo-400 underline" href="/results/{{ r.job_id }}">{{ r.job_id }}</a></td>
+        <td class="p-2">{{ r.task or r.job }}</td>
+        <td class="p-2">{{ r.agent or r.agent_name }}</td>
+        <td class="p-2">{{ r.status }}</td>
+        <td class="p-2">{{ r.timestamp or r.created_at }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="text-gray-400 text-sm">No results yet.</p>
+  {% endif %}
+</section>
