@@ -1,14 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProductForge AI Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body class="bg-gray-900 text-gray-100 font-sans min-h-screen">
-    <div class="max-w-6xl mx-auto py-8 px-4">
+{% extends "base_dashboard.html" %}
+{% block title %}ProductForge AI Dashboard{% endblock %}
+{% block content %}
+    <div class="max-w-6xl mx-auto py-4 px-0">
         <header class="text-center mb-12">
             <h1 class="text-5xl font-bold text-indigo-400 mb-3">
                 ⚙️ ProductForge AI Dashboard
@@ -101,6 +94,7 @@
         </div>
     </div>
 
+    {% block body_scripts %}
     <script>
         async function loadHealth() {
             const res = await fetch('/system/health');
@@ -217,7 +211,7 @@
             loadAnalytics();
             loadTrendChart();
         }, 15000);
-        </script>
+    </script>
 
 <script>
 const form = document.getElementById('uploadForm');
@@ -234,5 +228,5 @@ if (form) {
     });
 }
 </script>
-</body>
-</html>
+    {% endblock %}
+{% endblock %}

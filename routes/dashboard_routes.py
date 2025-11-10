@@ -25,12 +25,12 @@ async def dashboard(request: Request):
 @router.get("/help", response_class=HTMLResponse)
 async def help_page(request: Request):
     """Serve the help and FAQ page."""
-    return templates.TemplateResponse("help.html", {"request": request})
+    return templates.TemplateResponse("help.html", {"request": request, "active_tab": "overview"})
 
 @router.get("/reports", response_class=HTMLResponse)
 async def reports_page(request: Request):
     """Serve the generated reports listing page."""
-    return templates.TemplateResponse("reports.html", {"request": request})
+    return templates.TemplateResponse("reports.html", {"request": request, "active_tab": "reports"})
 
 # ===========================
 # New Phase 7 dashboard pages

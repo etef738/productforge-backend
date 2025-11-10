@@ -1,12 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Help & FAQ – ProductForge Dashboard</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-50 text-gray-900 font-sans">
-  <div class="max-w-5xl mx-auto py-10 px-6">
+{% extends "base_dashboard.html" %}
+{% block title %}Help & FAQ – ProductForge Dashboard{% endblock %}
+{% block content %}
+  <div class="max-w-5xl mx-auto py-6 px-0">
     <h1 class="text-4xl font-bold mb-6 text-indigo-600">🧭 Help & FAQ</h1>
     <p class="text-gray-600 mb-8">Everything you need to know about using ProductForge’s multi-agent orchestration dashboard.</p>
 
@@ -53,5 +48,4 @@
 
     <p class="text-sm text-gray-500 mt-10">© 2025 ProductForge — Multi-Agent AI Orchestration System</p>
   </div>
-</body>
-</html>
+{% endblock %}

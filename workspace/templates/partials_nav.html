@@ -1,11 +1,9 @@
-<nav class="mb-6">
-  <ul class="flex gap-4 text-sm">
-    <li><a href="/dashboard" class="px-3 py-1 rounded border border-purple-500/40 hover:bg-purple-500/10 {{ 'bg-purple-500/20' if active_tab=='overview' else '' }}">Overview</a></li>
-    <li><a href="/dashboard/upload" class="px-3 py-1 rounded border border-purple-500/40 hover:bg-purple-500/10 {{ 'bg-purple-500/20' if active_tab=='upload' else '' }}">Upload</a></li>
-    <li><a href="/dashboard/agents" class="px-3 py-1 rounded border border-purple-500/40 hover:bg-purple-500/10 {{ 'bg-purple-500/20' if active_tab=='agents' else '' }}">Agents</a></li>
-    <li><a href="/dashboard/results" class="px-3 py-1 rounded border border-purple-500/40 hover:bg-purple-500/10 {{ 'bg-purple-500/20' if active_tab=='results' else '' }}">Results</a></li>
-    <li><a href="/dashboard/workflows" class="px-3 py-1 rounded border border-purple-500/40 hover:bg-purple-500/10 {{ 'bg-purple-500/20' if active_tab=='workflows' else '' }}">Workflows</a></li>
-    <li><a href="/dashboard/reports" class="px-3 py-1 rounded border border-purple-500/40 hover:bg-purple-500/10 {{ 'bg-purple-500/20' if active_tab=='reports' else '' }}">Reports</a></li>
-    <li><a href="/dashboard/observability" class="px-3 py-1 rounded border border-purple-500/40 hover:bg-purple-500/10 {{ 'bg-purple-500/20' if active_tab=='observability' else '' }}">📊 Observability</a></li>
-  </ul>
+<nav class="flex gap-4 items-center bg-slate-800/70 px-4 py-2 rounded-xl shadow-sm">
+  <a href="/dashboard" class="nav-link px-3 py-1 rounded {{ 'nav-active' if active_tab=='overview' else 'text-gray-300' }}">🏠 Overview</a>
+  <a href="/dashboard/upload" class="nav-link px-3 py-1 rounded {{ 'nav-active' if active_tab=='upload' else 'text-gray-300' }}">📤 Upload</a>
+  <a href="/dashboard/agents" class="nav-link px-3 py-1 rounded {{ 'nav-active' if active_tab=='agents' else 'text-gray-300' }}">🤖 Agents</a>
+  <a href="/dashboard/results" class="nav-link px-3 py-1 rounded {{ 'nav-active' if active_tab=='results' else 'text-gray-300' }}">📈 Results</a>
+  <a href="/dashboard/workflows" class="nav-link px-3 py-1 rounded {{ 'nav-active' if active_tab=='workflows' else 'text-gray-300' }}">⚙️ Workflows</a>
+  <a href="/dashboard/reports" class="nav-link px-3 py-1 rounded {{ 'nav-active' if active_tab=='reports' else 'text-gray-300' }}">🧾 Reports</a>
+  <a href="/dashboard/observability" class="nav-link px-3 py-1 rounded {{ 'nav-active' if active_tab=='observability' else 'text-gray-300' }}">📊 Observability</a>
 </nav>

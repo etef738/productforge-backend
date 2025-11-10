@@ -1,13 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Observability | ProductForge</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <style>
+{% extends "base_dashboard.html" %}
+{% block title %}Observability | ProductForge{% endblock %}
+{% block head_extra %}
+<style>
         .metric-card {
             transition: all 0.3s ease;
         }
@@ -23,31 +17,28 @@
             50% { opacity: 0.5; }
         }
     </style>
-</head>
-<body class="bg-gray-50 min-h-screen">
-    <!-- Navigation -->
-    {% include 'partials_nav.html' %}
-    
-    <div class="container mx-auto px-4 py-8">
+{% endblock %}
+{% block content %}
+    <div class="container mx-auto px-0 py-0">
         <!-- Header -->
         <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-800 flex items-center gap-2">
+            <h1 class="text-3xl font-bold text-gray-100 flex items-center gap-2">
                 📊 System Observability
                 <span class="pulse-indicator inline-block w-3 h-3 bg-green-500 rounded-full"></span>
             </h1>
-            <p class="text-gray-600 mt-2">Live metrics and system health monitoring</p>
+            <p class="text-gray-300 mt-2">Live metrics and system health monitoring</p>
         </div>
 
         <!-- System Pulse Panel (Auto-refresh every 5s) -->
         <div class="mb-8">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4">⚡ System Pulse</h2>
+            <h2 class="text-xl font-semibold text-gray-200 mb-4">⚡ System Pulse</h2>
             <div id="system-pulse" 
                  hx-get="/dashboard/api/stats-html" 
                  hx-trigger="load, every 5s"
                  hx-swap="innerHTML"
                  class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <!-- Initial loading state -->
-                <div class="metric-card bg-white rounded-lg shadow p-6 text-center">
+                <div class="metric-card bg-slate-800 rounded-lg shadow p-6 text-center">
                     <div class="text-gray-400">Loading...</div>
                 </div>
             </div>
@@ -56,31 +47,32 @@
         <!-- Charts Section -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             <!-- Redis Latency Chart -->
-            <div class="bg-white rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-700 mb-4">📡 Redis Latency (ms)</h3>
+            <div class="bg-slate-800 rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-200 mb-4">📡 Redis Latency (ms)</h3>
                 <canvas id="redis-latency-chart"></canvas>
             </div>
 
             <!-- Cache Hit Rate Chart -->
-            <div class="bg-white rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-700 mb-4">💾 Cache Performance</h3>
+            <div class="bg-slate-800 rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-200 mb-4">💾 Cache Performance</h3>
                 <canvas id="cache-hit-chart"></canvas>
             </div>
         </div>
 
         <!-- Prometheus Metrics -->
-        <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4">📈 Prometheus Metrics</h2>
+        <div class="bg-slate-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-200 mb-4">📈 Prometheus Metrics</h2>
             <div id="prometheus-metrics" 
                  hx-get="/metrics" 
                  hx-trigger="load, every 10s"
                  hx-swap="innerHTML"
-                 class="font-mono text-sm text-gray-600 bg-gray-50 p-4 rounded max-h-96 overflow-y-auto">
+                 class="font-mono text-sm text-gray-300 bg-slate-900 p-4 rounded max-h-96 overflow-y-auto">
                 Loading metrics...
             </div>
         </div>
     </div>
-
+{% endblock %}
+{% block body_scripts %}
     <script>
         // Parse metrics from HTMX response and update charts
         document.body.addEventListener('htmx:afterSwap', function(evt) {
@@ -167,5 +159,4 @@
             cacheChart.update('none');
         }
     </script>
-</body>
-</html>
+{% endblock %}

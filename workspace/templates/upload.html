@@ -1,19 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload | ProductForge</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <style>
-        body { background: #1a1a2e; color: #eee; font-family: system-ui, sans-serif; }
-        .htmx-swapping { opacity: 0.5; transition: opacity 0.2s ease; }
-        .htmx-settling { opacity: 1; }
-    </style>
-</head>
-<body class="p-6">
-{% include 'partials_nav.html' %}
+{% extends "base_dashboard.html" %}
+{% block title %}Upload | ProductForge{% endblock %}
+{% block head_extra %}
+<style>
+  .htmx-swapping { opacity: 0.5; transition: opacity 0.2s ease; }
+  .htmx-settling { opacity: 1; }
+</style>
+{% endblock %}
+{% block content %}
 <section class="max-w-5xl mx-auto">
   <h1 class="text-3xl font-bold mb-4">📤 Upload</h1>
   <form method="POST" action="/upload/file" enctype="multipart/form-data" class="space-y-3 bg-gray-800 p-4 rounded border border-purple-500/40">
@@ -53,5 +46,4 @@
     {% endif %}
   </div>
 </section>
-</body>
-</html>
+{% endblock %}

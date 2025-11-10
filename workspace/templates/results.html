@@ -1,6 +1,8 @@
-{% include 'partials_nav.html' %}
+{% extends "base_dashboard.html" %}
+{% block title %}Results | ProductForge{% endblock %}
+{% block content %}
 <section class="max-w-6xl mx-auto">
-  <h1 class="text-3xl font-bold mb-4">📊 Results</h1>
+  <h1 class="text-3xl font-bold mb-6">📊 Results</h1>
 
   <div class="flex gap-3 mb-4">
     <a href="/results/export/json" class="px-3 py-1 bg-gray-800 border border-gray-600 rounded hover:bg-gray-700 text-sm">Export JSON</a>
@@ -34,4 +36,5 @@
   {% else %}
     <p class="text-gray-400 text-sm">No results yet.</p>
   {% endif %}
-</section>
+  </section>
+{% endblock %}

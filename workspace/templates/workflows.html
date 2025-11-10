@@ -1,6 +1,8 @@
-{% include 'partials_nav.html' %}
+{% extends "base_dashboard.html" %}
+{% block title %}Workflows | ProductForge{% endblock %}
+{% block content %}
 <section class="max-w-6xl mx-auto">
-  <h1 class="text-3xl font-bold mb-4">🧩 Workflows</h1>
+  <h1 class="text-3xl font-bold mb-6">🧩 Workflows</h1>
 
   <form method="POST" action="/orchestrate" class="bg-gray-800 p-4 rounded border border-purple-500/40 mb-6">
     <label class="block text-sm mb-1">Task</label>
@@ -67,4 +69,5 @@
   {% else %}
     <p class="text-gray-400 text-sm">No completed workflows.</p>
   {% endif %}
-</section>
+  </section>
+{% endblock %}
