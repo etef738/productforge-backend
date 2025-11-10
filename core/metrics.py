@@ -21,6 +21,7 @@ except Exception:  # pragma: no cover - fallback for environments without promet
     def Histogram(name, doc, buckets=None):  # type: ignore
         return _NullMetric()
 
+
 # Upload-related Prometheus metrics (module-level singletons)
 upload_requests_total = Counter(
     "productforge_upload_requests_total",
@@ -34,6 +35,11 @@ upload_duration_seconds = Histogram(
     "productforge_upload_duration_seconds",
     "File upload processing duration in seconds"
 )
+
+# Agent observability metrics
+from prometheus_client import Gauge
+agent_total = Gauge("agents_total", "Total number of registered agents")
+agent_active = Gauge("agents_active", "Number of active agents")
 
 
 class MetricsCollector:

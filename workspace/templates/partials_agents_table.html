@@ -1,0 +1,26 @@
+{% if agents %}
+<table class="w-full text-sm text-gray-300 mt-4 border-collapse">
+  <thead class="text-indigo-400 border-b border-gray-700">
+    <tr><th>Name</th><th>Role</th><th>Model</th><th>Status</th><th>Last Active</th></tr>
+  </thead>
+  <tbody>
+    {% for a in agents %}
+    <tr class="hover:bg-gray-800/40 transition">
+      <td class="py-2">{{ a.name }}</td>
+      <td class="py-2">{{ a.role }}</td>
+      <td class="py-2">{{ a.model }}</td>
+      <td class="py-2">
+        {% if a.status == "active" %}
+        <span class="text-green-400 font-semibold">🟢 Active</span>
+        {% else %}
+        <span class="text-gray-400">🔴 Idle</span>
+        {% endif %}
+      </td>
+      <td class="py-2">{{ a.registered_at }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="text-gray-500">No agents registered yet.</p>
+{% endif %}

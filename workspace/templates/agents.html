@@ -1,41 +1,25 @@
-{% extends "base_dashboard.html" %}
-{% block title %}Agents | ProductForge{% endblock %}
-{% block content %}
-<section class="max-w-5xl mx-auto">
-  <h1 class="text-3xl font-bold mb-6">🤖 Agents</h1>
   {% if agents and agents|length > 0 %}
-    <table class="w-full text-sm border border-gray-700 rounded overflow-hidden">
-      <thead class="bg-gray-700">
-        <tr>
-          <th class="p-2 text-left">Name</th>
-          <th class="p-2 text-left">Role</th>
-          <th class="p-2 text-left">Model</th>
-          <th class="p-2 text-left">Created</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for a in agents %}
-        <tr class="border-t border-gray-700">
-          <td class="p-2">{{ a.name }}</td>
-          <td class="p-2">{{ a.role }}</td>
-          <td class="p-2">{{ a.model or '—' }}</td>
-          <td class="p-2">{{ a.created_at or '—' }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p class="text-gray-400 text-sm">No agents registered yet.</p>
-  {% endif %}
 
-  <div class="mt-8">
-    <h2 class="text-lg font-semibold mb-2">Register Agent</h2>
-    <form method="POST" action="/agents/" class="grid grid-cols-1 md:grid-cols-4 gap-2 bg-gray-800 p-4 rounded border border-purple-500/40">
-      <input name="name" placeholder="name" required class="px-2 py-1 rounded bg-gray-900 border border-gray-700" />
-      <input name="role" placeholder="role" class="px-2 py-1 rounded bg-gray-900 border border-gray-700" />
-      <input name="model" placeholder="model" class="px-2 py-1 rounded bg-gray-900 border border-gray-700" />
-      <button class="px-3 py-1 bg-indigo-600 rounded hover:bg-indigo-500">Create</button>
-    </form>
+{% extends "base_dashboard.html" %}
+{% block content %}
+<div class="space-y-8">
+  <h2 class="text-2xl font-bold text-indigo-400 flex items-center gap-2">🤖 Agents</h2>
+
+  <form hx-post="/dashboard/agents/register"
+        hx-target="#agents-table"
+        hx-swap="outerHTML transition:opacity"
+        class="flex flex-col sm:flex-row gap-3 bg-gray-900/60 p-4 rounded-xl border border-indigo-500/20">
+    <input name="name" placeholder="name" required class="rounded-xl p-2 bg-gray-800 text-gray-100 flex-1">
+    <input name="role" placeholder="role" required class="rounded-xl p-2 bg-gray-800 text-gray-100 flex-1">
+    <input name="model" placeholder="model" required class="rounded-xl p-2 bg-gray-800 text-gray-100 flex-1">
+    <button class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl font-semibold transition">Create</button>
+  </form>
+
+  <div id="agents-table"
+       hx-get="/dashboard/api/agents-table"
+       hx-trigger="load, every 10s"
+       hx-swap="outerHTML transition:opacity">
   </div>
-  </section>
+</div>
 {% endblock %}
+      </tbody>
