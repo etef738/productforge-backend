@@ -54,3 +54,16 @@ class AgentService:
         await r.set(f"agent_result:{agent_name}", result)
         await r.hset(f"agent:{agent_name}", "status", "completed")
         return {"agent": agent_name, "result": result}
+
+# === Compatibility adapter for legacy imports ===
+# Keeps existing route imports working after refactor
+service = AgentService()
+
+async def register_agent(*args, **kwargs):
+    return await service.register_agent(*args, **kwargs)
+
+async def list_agents(*args, **kwargs):
+    return await service.list_agents(*args, **kwargs)
+
+async def run_agent_task(*args, **kwargs):
+    return await service.run_agent_task(*args, **kwargs)
