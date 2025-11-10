@@ -9,6 +9,15 @@ import io
 client = TestClient(app)
 
 
+def test_file_upload_success(tmp_path):
+     file_data = io.BytesIO(b"sample,data")
+     files = {"file": ("test.csv", file_data, "text/csv")}
+     r = client.post("/upload/file", files=files)
+     assert r.status_code == 200
+     data = r.json()
+     assert data["status"] == "success"
+     assert data["filename"] == "test.csv"
+
 def test_upload_ping():
     """Test upload module ping endpoint."""
     response = client.get("/upload/ping")

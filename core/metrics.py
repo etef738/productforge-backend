@@ -1,3 +1,9 @@
+from prometheus_client import Counter
+
+UPLOAD_COUNTER = Counter(
+    "productforge_uploads_total",
+    "Total number of uploaded files handled by the system"
+)
 """Prometheus-style metrics collection for observability.
 
 Provides in-memory counters and gauges that can be exported in Prometheus
