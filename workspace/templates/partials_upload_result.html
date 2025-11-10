@@ -1,0 +1,10 @@
+<div class="bg-slate-800 p-4 mt-4 rounded-lg text-gray-200 border border-slate-700 animate-fadeIn">
+  <h3 class="text-green-400 font-semibold mb-2">✅ Upload Successful</h3>
+  <p>File: <span class="font-medium text-indigo-300">{{ filename }}</span></p>
+  <p>Duration: <span class="text-gray-400">{{ duration_ms }} ms</span></p>
+
+  <div class="flex gap-4 mt-2 text-sm">
+    <p>Uploads: <span class="text-green-400">{{ metrics.uploads }}</span></p>
+    <p>Failures: <span class="text-red-400">{{ metrics.failures }}</span></p>
+  </div>
+</div>

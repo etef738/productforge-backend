@@ -4,17 +4,26 @@ File upload routes with indexed listing support.
 
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.templating import Jinja2Templates
 from services.upload_service import UploadService
 
-router = APIRouter(prefix="/upload", tags=["Upload"])
+templates = Jinja2Templates(directory="workspace/templates")
 
 # Phase 11: Modern upload endpoint
 @router.post("/file")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(request: Request, file: UploadFile = File(...)):
     try:
         result = await UploadService.upload_file(file)
-        return JSONResponse(result)
+        return templates.TemplateResponse(
+            "partials_upload_result.html",
+            {
+                "request": request,
+                "status": result["status"],
+                "filename": result["filename"],
+                "duration_ms": result["duration_ms"],
+                "metrics": result["metrics"]
+            },
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
