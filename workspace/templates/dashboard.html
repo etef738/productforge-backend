@@ -60,6 +60,20 @@
                         <p class="text-xs text-gray-300">Tasks (7d)</p>
                         <p class="text-lg font-semibold" id="kpiTasks7d">--</p>
                     </div>
+                </div>
+                <!-- ...existing analytics/trends code... -->
+            </div>
+
+            <!-- Upload & Run Card -->
+            <div class="rounded-2xl border border-indigo-500/30 p-4 shadow-md bg-gray-900">
+              <h2 class="text-indigo-300 text-lg font-semibold mb-2">📤 Upload & Run</h2>
+              <form id="uploadForm" enctype="multipart/form-data" class="space-y-2">
+                <input type="file" name="file" required class="text-sm text-gray-300" />
+                <button type="submit" class="px-3 py-1 bg-indigo-600 rounded-lg hover:bg-indigo-500">Upload</button>
+              </form>
+              <div id="uploadStatus" class="text-sm text-gray-400 mt-2"></div>
+            </div>
+                    </div>
                     <div class="p-3 bg-gray-700 rounded">
                         <p class="text-xs text-gray-300">Agents Active</p>
                         <p class="text-lg font-semibold" id="kpiAgents">--</p>
@@ -203,6 +217,22 @@
             loadAnalytics();
             loadTrendChart();
         }, 15000);
-    </script>
+        </script>
+
+<script>
+const form = document.getElementById('uploadForm');
+if (form) {
+    form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const data = new FormData(form);
+        const res = await fetch('/upload/file', { method: 'POST', body: data });
+        const json = await res.json();
+        document.getElementById('uploadStatus').textContent =
+            json.status === 'success'
+                ? `✅ Uploaded ${json.filename}`
+                : `❌ Upload failed: ${json.detail || 'Unknown error'}`;
+    });
+}
+</script>
 </body>
 </html>

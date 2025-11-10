@@ -135,7 +135,7 @@ app.include_router(system_router, tags=["System"])            # router has prefi
 app.include_router(agent_router, tags=["Agents"])            # router has prefix="/agents"
 app.include_router(result_router, tags=["Results"])          # router has prefix="/results"
 app.include_router(orchestration_router, tags=["Orchestration"])  # routes declare explicit paths
-app.include_router(upload_router, tags=["File Uploads"])     # router has prefix="/upload"
+app.include_router(upload_router, tags=["Uploads"])
 app.include_router(metrics_router, prefix="/metrics", tags=["Metrics"])  # mounted at /metrics
 app.include_router(dashboard_router, tags=["Dashboard"])     # router has prefix="/dashboard"
 app.include_router(analytics_router, prefix="/analytics", tags=["Analytics"])

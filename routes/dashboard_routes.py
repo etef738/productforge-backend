@@ -39,6 +39,9 @@ from services.upload_service import UploadService
 from services.agent_service import AgentService
 from services.result_service import ResultService
 from services.orchestration_service import OrchestrationService
+from core.metrics import get_metrics
+from fastapi.responses import JSONResponse
+import time
 
 
 @router.get("/upload", response_class=HTMLResponse)
@@ -76,3 +79,88 @@ async def workflows_page(request: Request):
     service = OrchestrationService()
     workflows_data = await service.list_workflows(limit=20)
     return templates.TemplateResponse("workflows.html", {"request": request, "workflows": workflows_data, "active_tab": "workflows"})
+
+
+@router.get("/observability", response_class=HTMLResponse)
+async def observability_page(request: Request):
+    """Observability page with live metrics and charts."""
+    return templates.TemplateResponse("observability.html", {"request": request, "active_tab": "observability"})
+
+
+# ===========================
+# Phase 8: Live Dashboard APIs
+# ===========================
+
+@router.get("/api/stats")
+async def dashboard_stats():
+    """Return live dashboard statistics for HTMX polling.
+    
+    Returns JSON with uptime, total requests, Redis latency, cache hit rate.
+    Auto-refreshed by HTMX every 5 seconds.
+    """
+    metrics = get_metrics()
+    metrics.increment_dashboard_refresh()
+    
+    return JSONResponse(content=metrics.to_dict())
+
+
+@router.get("/api/stats-html", response_class=HTMLResponse)
+async def dashboard_stats_html(request: Request):
+    """Return live dashboard statistics as HTML for HTMX polling.
+    
+    Returns HTML metric cards for system pulse panel.
+    Auto-refreshed by HTMX every 5 seconds.
+    """
+    metrics = get_metrics()
+    metrics.increment_dashboard_refresh()
+    
+    stats = metrics.to_dict()
+    uptime_hours = round(stats["uptime_seconds"] / 3600, 1)
+    
+    return templates.TemplateResponse("partials_stats.html", {
+        "request": request,
+        "uptime_hours": uptime_hours,
+        "total_requests": stats["total_requests"],
+        "redis_latency_ms": stats["redis_latency_ms"],
+        "cache_hit_rate": stats["cache_hit_rate"]
+    })
+
+
+@router.get("/api/recent-uploads")
+async def recent_uploads_api():
+    """Return recent uploads as JSON for HTMX partial refresh."""
+    metrics = get_metrics()
+    metrics.increment_htmx_event()
+    
+    service = UploadService()
+    uploads = service.list_uploads(limit=10)
+    
+    return JSONResponse(content={"uploads": uploads, "count": len(uploads)})
+
+
+@router.get("/api/recent-uploads-html", response_class=HTMLResponse)
+async def recent_uploads_html(request: Request):
+    """Return recent uploads as HTML table for HTMX polling."""
+    metrics = get_metrics()
+    metrics.increment_htmx_event()
+    
+    service = UploadService()
+    uploads = service.list_uploads(limit=10)
+    
+    return templates.TemplateResponse("partials_uploads_table.html", {
+        "request": request,
+        "uploads": uploads
+    })
+
+
+@router.get("/api/recent-workflows")
+async def recent_workflows_api():
+    """Return recent workflows as JSON for HTMX partial refresh."""
+    metrics = get_metrics()
+    metrics.increment_htmx_event()
+    
+    service = OrchestrationService()
+    workflows = await service.list_workflows(limit=10)
+    
+    return JSONResponse(content={"workflows": workflows, "count": len(workflows)})
+

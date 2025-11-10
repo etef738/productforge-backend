@@ -1,0 +1,22 @@
+<!-- System Pulse Metric Cards -->
+<div class="metric-card bg-white rounded-lg shadow p-6">
+    <div class="text-sm text-gray-500 mb-1">⏱️ Uptime</div>
+    <div class="text-3xl font-bold text-blue-600" data-metric="uptime">{{ uptime_hours }}h</div>
+</div>
+
+<div class="metric-card bg-white rounded-lg shadow p-6">
+    <div class="text-sm text-gray-500 mb-1">📊 Requests</div>
+    <div class="text-3xl font-bold text-green-600" data-metric="requests">{{ total_requests }}</div>
+</div>
+
+<div class="metric-card bg-white rounded-lg shadow p-6">
+    <div class="text-sm text-gray-500 mb-1">📡 Redis Latency</div>
+    <div class="text-3xl font-bold text-purple-600" data-metric="latency">{{ redis_latency_ms }}</div>
+    <div class="text-xs text-gray-400 mt-1">ms</div>
+</div>
+
+<div class="metric-card bg-white rounded-lg shadow p-6">
+    <div class="text-sm text-gray-500 mb-1">💾 Cache Hit Rate</div>
+    <div class="text-3xl font-bold text-indigo-600" data-metric="cache_hit">{{ cache_hit_rate }}</div>
+    <div class="text-xs text-gray-400 mt-1">%</div>
+</div>

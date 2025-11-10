@@ -22,6 +22,7 @@ class AnalyticsService:
     def __init__(self):
         self.redis = get_redis_client()
         self.metrics = get_metrics()
+        self._cache_ttl = 30  # Cache analytics summary for 30 seconds
 
     def _zcount_range(self, key: str, start_ts: float, end_ts: float) -> int:
         try:
@@ -49,6 +50,27 @@ class AnalyticsService:
             return 0
 
     def compute_snapshot(self) -> Dict[str, Any]:
+        """Compute analytics snapshot with caching.
+        
+        Returns cached snapshot if available (within 30s TTL),
+        otherwise computes fresh data and caches it.
+        """
+        # Check cache first
+        cache_key = "analytics_snapshot_cache"
+        try:
+            cached = self.redis.get(cache_key)
+            if cached:
+                self.metrics.increment_cache_hit()
+                logger.debug("analytics_snapshot_cache_hit")
+                # Return cached dict (assuming stored as JSON string)
+                import json
+                return json.loads(cached)
+        except Exception as e:
+            logger.debug(f"cache_check_failed: {e}")
+        
+        # Cache miss - compute fresh snapshot
+        self.metrics.increment_cache_miss()
+        
         now = time.time()
         dt_now = datetime.fromtimestamp(now, UTC)
         one_hour_ago = now - 3600
@@ -116,9 +138,10 @@ class AnalyticsService:
             },
         }
 
-        # Store snapshot with TTL = 60 seconds
+        # Store snapshot with TTL = 30 seconds (cache)
         try:
-            self.redis.set("analytics_snapshot", str(snapshot), ex=60)
+            import json
+            self.redis.set(cache_key, json.dumps(snapshot), ex=self._cache_ttl)
             self.metrics.increment_analytics_snapshots()
             logger.info("analytics_snapshot_refreshed")
         except Exception:

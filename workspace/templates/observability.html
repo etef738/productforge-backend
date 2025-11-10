@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Observability | ProductForge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .metric-card {
+            transition: all 0.3s ease;
+        }
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .pulse-indicator {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    {% include 'partials_nav.html' %}
+    
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 flex items-center gap-2">
+                📊 System Observability
+                <span class="pulse-indicator inline-block w-3 h-3 bg-green-500 rounded-full"></span>
+            </h1>
+            <p class="text-gray-600 mt-2">Live metrics and system health monitoring</p>
+        </div>
+
+        <!-- System Pulse Panel (Auto-refresh every 5s) -->
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">⚡ System Pulse</h2>
+            <div id="system-pulse" 
+                 hx-get="/dashboard/api/stats-html" 
+                 hx-trigger="load, every 5s"
+                 hx-swap="innerHTML"
+                 class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Initial loading state -->
+                <div class="metric-card bg-white rounded-lg shadow p-6 text-center">
+                    <div class="text-gray-400">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Redis Latency Chart -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-4">📡 Redis Latency (ms)</h3>
+                <canvas id="redis-latency-chart"></canvas>
+            </div>
+
+            <!-- Cache Hit Rate Chart -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-4">💾 Cache Performance</h3>
+                <canvas id="cache-hit-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Prometheus Metrics -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">📈 Prometheus Metrics</h2>
+            <div id="prometheus-metrics" 
+                 hx-get="/metrics" 
+                 hx-trigger="load, every 10s"
+                 hx-swap="innerHTML"
+                 class="font-mono text-sm text-gray-600 bg-gray-50 p-4 rounded max-h-96 overflow-y-auto">
+                Loading metrics...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Parse metrics from HTMX response and update charts
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.detail.target.id === 'system-pulse') {
+                // Extract data from the updated HTML
+                const uptime = document.querySelector('[data-metric="uptime"]')?.textContent || '0';
+                const requests = document.querySelector('[data-metric="requests"]')?.textContent || '0';
+                const latency = parseFloat(document.querySelector('[data-metric="latency"]')?.textContent || '0');
+                const cacheHit = parseFloat(document.querySelector('[data-metric="cache_hit"]')?.textContent || '0');
+                
+                // Update charts with new data
+                updateRedisLatencyChart(latency);
+                updateCacheHitChart(cacheHit);
+            }
+        });
+
+        // Redis Latency Chart (Line chart)
+        const redisCtx = document.getElementById('redis-latency-chart').getContext('2d');
+        const redisData = {
+            labels: [],
+            datasets: [{
+                label: 'Latency (ms)',
+                data: [],
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        };
+        const redisChart = new Chart(redisCtx, {
+            type: 'line',
+            data: redisData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'ms' } }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+
+        function updateRedisLatencyChart(latency) {
+            const now = new Date().toLocaleTimeString();
+            redisData.labels.push(now);
+            redisData.datasets[0].data.push(latency);
+            
+            // Keep last 20 points
+            if (redisData.labels.length > 20) {
+                redisData.labels.shift();
+                redisData.datasets[0].data.shift();
+            }
+            
+            redisChart.update('none'); // Skip animation for smooth updates
+        }
+
+        // Cache Hit Rate Chart (Doughnut)
+        const cacheCtx = document.getElementById('cache-hit-chart').getContext('2d');
+        const cacheData = {
+            labels: ['Cache Hits', 'Cache Misses'],
+            datasets: [{
+                data: [0, 0],
+                backgroundColor: ['rgb(34, 197, 94)', 'rgb(239, 68, 68)']
+            }]
+        };
+        const cacheChart = new Chart(cacheCtx, {
+            type: 'doughnut',
+            data: cacheData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+
+        function updateCacheHitChart(hitRate) {
+            const hits = hitRate;
+            const misses = 100 - hitRate;
+            cacheData.datasets[0].data = [hits, misses];
+            cacheChart.update('none');
+        }
+    </script>
+</body>
+</html>

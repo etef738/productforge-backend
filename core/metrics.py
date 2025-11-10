@@ -1,9 +1,3 @@
-from prometheus_client import Counter
-
-UPLOAD_COUNTER = Counter(
-    "productforge_uploads_total",
-    "Total number of uploaded files handled by the system"
-)
 """Prometheus-style metrics collection for observability.
 
 Provides in-memory counters and gauges that can be exported in Prometheus
@@ -12,6 +6,9 @@ text format via the /metrics endpoint.
 import time
 from typing import Dict, Any
 from datetime import datetime
+
+
+UPLOAD_COUNTER = None  # Placeholder for compatibility
 
 
 class MetricsCollector:
@@ -27,6 +24,10 @@ class MetricsCollector:
         self._system_health_requests_total = 0
         self._reports_generated_total = 0
         self._analytics_snapshots_total = 0
+        self._dashboard_refresh_total = 0
+        self._htmx_events_total = 0
+        self._cache_hits_total = 0
+        self._cache_misses_total = 0
         
     def increment_requests(self):
         """Increment total request counter."""
@@ -56,6 +57,22 @@ class MetricsCollector:
     def increment_analytics_snapshots(self):
         """Increment total analytics snapshots counter."""
         self._analytics_snapshots_total += 1
+
+    def increment_dashboard_refresh(self):
+        """Increment dashboard refresh counter (HTMX polling)."""
+        self._dashboard_refresh_total += 1
+
+    def increment_htmx_event(self):
+        """Increment HTMX event counter (user interactions)."""
+        self._htmx_events_total += 1
+
+    def increment_cache_hit(self):
+        """Increment cache hit counter."""
+        self._cache_hits_total += 1
+
+    def increment_cache_miss(self):
+        """Increment cache miss counter."""
+        self._cache_misses_total += 1
     
     def get_uptime_seconds(self) -> float:
         """Get application uptime in seconds."""
@@ -106,6 +123,22 @@ class MetricsCollector:
             "# TYPE productforge_analytics_snapshots_total counter",
             f"productforge_analytics_snapshots_total {self._analytics_snapshots_total}",
             "",
+            "# HELP productforge_dashboard_refresh_total Dashboard auto-refresh events",
+            "# TYPE productforge_dashboard_refresh_total counter",
+            f"productforge_dashboard_refresh_total {self._dashboard_refresh_total}",
+            "",
+            "# HELP productforge_htmx_events_total HTMX interaction events",
+            "# TYPE productforge_htmx_events_total counter",
+            f"productforge_htmx_events_total {self._htmx_events_total}",
+            "",
+            "# HELP productforge_cache_hits_total Cache hit count",
+            "# TYPE productforge_cache_hits_total counter",
+            f"productforge_cache_hits_total {self._cache_hits_total}",
+            "",
+            "# HELP productforge_cache_misses_total Cache miss count",
+            "# TYPE productforge_cache_misses_total counter",
+            f"productforge_cache_misses_total {self._cache_misses_total}",
+            "",
         ]
         
         return "\n".join(lines)
@@ -122,6 +155,13 @@ class MetricsCollector:
             "system_health_requests_total": self._system_health_requests_total,
             "reports_generated_total": self._reports_generated_total,
             "analytics_snapshots_total": self._analytics_snapshots_total,
+            "dashboard_refresh_total": self._dashboard_refresh_total,
+            "htmx_events_total": self._htmx_events_total,
+            "cache_hits_total": self._cache_hits_total,
+            "cache_misses_total": self._cache_misses_total,
+            "cache_hit_rate": round(
+                self._cache_hits_total / max(1, self._cache_hits_total + self._cache_misses_total) * 100, 2
+            ),
             "timestamp": datetime.now().isoformat()
         }
 

@@ -1,0 +1,24 @@
+{% if uploads and uploads|length > 0 %}
+<table class="w-full text-sm border border-gray-700 rounded overflow-hidden">
+  <thead class="bg-gray-700">
+    <tr>
+      <th class="p-2 text-left">Filename</th>
+      <th class="p-2 text-left">Upload ID</th>
+      <th class="p-2 text-left">Uploaded At</th>
+      <th class="p-2 text-left">Size</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for u in uploads %}
+    <tr class="border-t border-gray-700">
+      <td class="p-2">{{ u.filename or u.original_filename }}</td>
+      <td class="p-2 font-mono text-xs">{{ u.upload_id }}</td>
+      <td class="p-2">{{ u.uploaded_at or '—' }}</td>
+      <td class="p-2">{{ (u.size // 1024) if u.size else '—' }} KB</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+  <p class="text-gray-400 text-sm">No uploads yet.</p>
+{% endif %}

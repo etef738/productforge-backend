@@ -1,3 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload | ProductForge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        body { background: #1a1a2e; color: #eee; font-family: system-ui, sans-serif; }
+        .htmx-swapping { opacity: 0.5; transition: opacity 0.2s ease; }
+        .htmx-settling { opacity: 1; }
+    </style>
+</head>
+<body class="p-6">
 {% include 'partials_nav.html' %}
 <section class="max-w-5xl mx-auto">
   <h1 class="text-3xl font-bold mb-4">📤 Upload</h1>
@@ -6,29 +21,37 @@
     <input type="file" name="file" accept=".zip" required class="text-sm" />
     <button type="submit" class="px-4 py-2 bg-indigo-600 rounded hover:bg-indigo-500">Upload</button>
   </form>
-  <h2 class="text-xl mt-8 mb-3 font-semibold">Recent Uploads</h2>
-  {% if uploads and uploads|length > 0 %}
-  <table class="w-full text-sm border border-gray-700 rounded overflow-hidden">
-    <thead class="bg-gray-700">
-      <tr>
-        <th class="p-2 text-left">Filename</th>
-        <th class="p-2 text-left">Upload ID</th>
-        <th class="p-2 text-left">Uploaded At</th>
-        <th class="p-2 text-left">Size</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for u in uploads %}
-      <tr class="border-t border-gray-700">
-        <td class="p-2">{{ u.filename or u.original_filename }}</td>
-        <td class="p-2 font-mono text-xs">{{ u.upload_id }}</td>
-        <td class="p-2">{{ u.uploaded_at or '—' }}</td>
-        <td class="p-2">{{ (u.size // 1024) if u.size else '—' }} KB</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-    <p class="text-gray-400 text-sm">No uploads yet.</p>
-  {% endif %}
+  <h2 class="text-xl mt-8 mb-3 font-semibold">Recent Uploads <span class="text-sm text-gray-400">(auto-refresh)</span></h2>
+  <div id="uploads-table" 
+       hx-get="/dashboard/api/recent-uploads-html" 
+       hx-trigger="load, every 10s"
+       hx-swap="innerHTML">
+    <!-- Initial server-side content -->
+    {% if uploads and uploads|length > 0 %}
+    <table class="w-full text-sm border border-gray-700 rounded overflow-hidden">
+      <thead class="bg-gray-700">
+        <tr>
+          <th class="p-2 text-left">Filename</th>
+          <th class="p-2 text-left">Upload ID</th>
+          <th class="p-2 text-left">Uploaded At</th>
+          <th class="p-2 text-left">Size</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in uploads %}
+        <tr class="border-t border-gray-700">
+          <td class="p-2">{{ u.filename or u.original_filename }}</td>
+          <td class="p-2 font-mono text-xs">{{ u.upload_id }}</td>
+          <td class="p-2">{{ u.uploaded_at or '—' }}</td>
+          <td class="p-2">{{ (u.size // 1024) if u.size else '—' }} KB</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p class="text-gray-400 text-sm">No uploads yet.</p>
+    {% endif %}
+  </div>
 </section>
+</body>
+</html>
