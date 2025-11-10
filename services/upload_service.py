@@ -24,6 +24,23 @@ UPLOAD_DIR = "workspace/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
+async def save_uploaded_file(file: UploadFile) -> str:
+    """Save an uploaded file to the workspace/uploads directory.
+    
+    Args:
+        file: The uploaded file from FastAPI
+        
+    Returns:
+        str: Path to the saved file
+    """
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    dest = os.path.join(UPLOAD_DIR, f"{timestamp}_{file.filename}")
+    content = await file.read()
+    with open(dest, "wb") as f:
+        f.write(content)
+    return dest
+
+
 class UploadService:
     """Service for file upload management with indexed storage."""
     
