@@ -1,58 +1,30 @@
-"""
-File upload routes with indexed listing support.
-"""
 
-
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Request
+from fastapi.responses import HTMLResponse
+from core.redis_client import get_redis_client
+from services.upload_service import handle_upload
 from fastapi.templating import Jinja2Templates
-from services.upload_service import UploadService
 
 templates = Jinja2Templates(directory="workspace/templates")
+router = APIRouter(prefix="/dashboard/upload", tags=["Upload"])
 
-# Phase 11: Modern upload endpoint
-@router.post("/file")
+
+@router.get("", response_class=HTMLResponse)
+async def upload_dashboard(request: Request):
+    """Render the Upload dashboard page."""
+    return templates.TemplateResponse("upload.html", {"request": request})
+
+
+@router.post("/file", response_class=HTMLResponse)
 async def upload_file(request: Request, file: UploadFile = File(...)):
-    try:
-        result = await UploadService.upload_file(file)
-        return templates.TemplateResponse(
-            "partials_upload_result.html",
-            {
-                "request": request,
-                "status": result["status"],
-                "filename": result["filename"],
-                "duration_ms": result["duration_ms"],
-                "metrics": result["metrics"]
-            },
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Legacy endpoints for backward compatibility
-@router.get("/ping")
-async def ping():
-    """Ping endpoint to check if upload module is alive."""
-    return {"status": "ok", "module": "upload"}
-
-@router.post("/")
-async def upload_file(
-    file: UploadFile = File(...),
-    project: str = Form(default="")
-):
-    """Upload a ZIP file for analysis."""
-    service = UploadService()
-    try:
-        result = await service.upload_file(file, project_name=project)
-        return result
-    except UploadException as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.get("/list")
-async def list_uploads(limit: int = 20):
-    """List recent uploads using sorted set index (O(log n + k))."""
-    service = UploadService()
-    uploads = service.list_uploads(limit=limit)
-    return {
-        "uploads": uploads,
-        "count": len(uploads)
-    }
+    """
+    Handle file uploads via HTMX.
+    - Saves file temporarily.
+    - Stores upload result in Redis for observability.
+    - Returns an HTML partial (partials_upload_result.html) rendered live.
+    """
+    redis = get_redis_client()
+    result = await handle_upload(file, redis)
+    context = {"request": request, "result": result}
+    return templates.TemplateResponse("partials_upload_result.html", context)
 
