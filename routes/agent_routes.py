@@ -9,6 +9,7 @@ templates = Jinja2Templates(directory="workspace/templates")
 @router.get("/dashboard/agents", response_class=HTMLResponse)
 async def dashboard_agents(request: Request):
     agents = await list_agents()
+    # Do NOT 'await' agents here; just pass the list to the template
     return templates.TemplateResponse("agents.html", {"request": request, "agents": agents, "active_tab": "agents"})
 
 @router.post("/dashboard/agents/register")
