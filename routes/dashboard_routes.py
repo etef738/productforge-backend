@@ -60,8 +60,7 @@ async def upload_page(request: Request):
 @router.get("/agents", response_class=HTMLResponse)
 async def agents_page(request: Request):
     """Agents page listing registered agents."""
-    service = AgentService()
-    agents = service.list_agents()
+    agents = await AgentService.list_agents()
     return templates.TemplateResponse("agents.html", {"request": request, "agents": agents, "active_tab": "agents"})
 
 
