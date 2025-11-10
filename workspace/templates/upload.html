@@ -10,20 +10,18 @@
   <div id="upload-metrics" hx-get="/dashboard/api/upload-metrics-html" hx-trigger="load, every 10s" hx-swap="outerHTML"></div>
 
   <!-- Upload Form -->
-  <form id="upload-form"
-        class="bg-gray-900/50 p-4 rounded-2xl flex flex-col sm:flex-row items-center gap-4 border border-indigo-500/20"
-        enctype="multipart/form-data"
-        method="post"
-        hx-post="/upload/file"
-        hx-target="#recent-uploads"
-        hx-swap="outerHTML transition:opacity">
+  <form
+    hx-post="/upload/file"
+    hx-encoding="multipart/form-data"
+    hx-target="#upload-metrics"
+    hx-swap="outerHTML"
+    class="flex items-center gap-4 bg-slate-800 p-4 rounded-xl"
+    enctype="multipart/form-data"
+    method="post"
+  >
     <label class="text-gray-300 font-medium">ZIP Archive:</label>
-    <input type="file" name="file"
-           accept=".zip"
-           required
-           class="file-input file-input-bordered file-input-primary text-sm bg-gray-800 text-gray-100 rounded-xl p-2 w-full sm:w-auto" />
-    <button type="submit"
-            class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-2 rounded-xl transition-all shadow-md">
+    <input type="file" name="file" accept=".zip" class="text-sm text-gray-200 bg-slate-700 p-2 rounded" />
+    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-5 py-2 rounded-lg">
       Upload
     </button>
   </form>
