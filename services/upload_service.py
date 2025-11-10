@@ -51,90 +51,39 @@ class UploadService:
         self.upload_dir = get_upload_dir()
         ensure_directory(self.upload_dir)
     
-    async def upload_file(
-        self,
-        file: UploadFile,
-        project_name: str = "",
-        max_size: int = 50 * 1024 * 1024  # 50MB default
-    ) -> Dict[str, Any]:
-        """Upload a file and queue it for analysis.
-        
-        Uses Redis sorted set index for efficient listing without scans.
-        """
-        
-        # Validate file type
-        if not file.filename.endswith(".zip"):
-            raise UploadException("Only ZIP files are allowed")
+    @staticmethod
+    async def upload_file(file):
+        import time
+        from core.metrics import upload_requests_total, upload_failures_total, upload_duration_seconds
+        start = time.perf_counter()
+        filename = file.filename
 
-        start_time = time.time()
-        metrics = get_metrics()
-        metrics.increment_upload_request()
+        if upload_requests_total:
+            upload_requests_total.inc()
 
-        # Read content
-        content = await file.read()
-        
-        # Validate size
-        if len(content) > max_size:
-            raise UploadException(f"File too large (max {max_size // (1024*1024)}MB)")
-        
-        # Sanitize filename and generate upload ID
-        safe_filename = sanitize_filename(file.filename)
-        upload_id = str(uuid4())
-        file_path = os.path.join(self.upload_dir, f"{upload_id}_{safe_filename}")
-        
-        # Save file
         try:
-            with open(file_path, "wb") as f:
+            # Save file
+            content = await file.read()
+            saved_path = f"workspace/uploads/{filename}"
+            with open(saved_path, "wb") as f:
                 f.write(content)
-        except Exception as e:
-            metrics.increment_upload_failure()
-            raise UploadException(f"Failed to save file: {e}")
-        
-        # Create job for processing
-        job_id = str(uuid4())
-        payload = {
-            "job_id": job_id,
-            "job": f"Analyze uploaded archive: {file.filename}",
-            "task": f"Analyze uploaded archive: {file.filename}",
-            "file_path": file_path,
-            "mode": "analyze",
-            "project": project_name or "unknown",
-            "created_at": datetime.now().isoformat()
-        }
-        
-        # Queue for processing
-        self.redis.lpush("queue", json.dumps(payload))
-        
-        # Index upload for fast retrieval
-        upload_metadata = {
-            "upload_id": upload_id,
-            "filename": safe_filename,
-            "original_filename": file.filename,
-            "size": len(content),
-            "file_path": file_path,
-            "job_id": job_id,
-            "project": project_name or "unknown",
-            "uploaded_at": datetime.now().isoformat()
-        }
-        index_upload(upload_id, upload_metadata)
-        
-        duration_ms = (time.time() - start_time) * 1000.0
-        metrics.record_upload_duration_ms(duration_ms)
+            duration_ms = (time.perf_counter() - start) * 1000
+            if upload_duration_seconds:
+                upload_duration_seconds.observe(duration_ms / 1000)
 
-        return {
-            "status": "uploaded",
-            "upload_id": upload_id,
-            "path": file_path,
-            "job_id": job_id,
-            "filename": safe_filename,
-            "size": len(content),
-            "metrics": {
-                "upload_count": metrics.to_dict()["upload_requests_total"],
-                "failure_count": metrics.to_dict()["upload_failures_total"],
-                "average_duration_ms": metrics.to_dict()["upload_avg_duration_ms"],
-                "last_duration_ms": round(duration_ms, 2)
+            return {
+                "status": "success",
+                "filename": filename,
+                "duration_ms": round(duration_ms, 2),
+                "metrics": {
+                    "uploads": upload_requests_total._value.get() if upload_requests_total else 0,
+                    "failures": upload_failures_total._value.get() if upload_failures_total else 0,
+                },
             }
-        }
+        except Exception as e:
+            if upload_failures_total:
+                upload_failures_total.inc()
+            raise e
     
     def list_uploads(self, limit: int = 20) -> List[Dict[str, Any]]:
         """List recent uploads using sorted set index (no scans)."""

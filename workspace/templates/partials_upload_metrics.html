@@ -1,14 +1,15 @@
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-  <div class="bg-slate-800 rounded-lg p-4 shadow">
-    <p class="text-xs text-gray-400">Total Uploads</p>
-    <p class="text-2xl font-semibold text-indigo-400">{{ upload_requests_total }}</p>
+
+<div class="grid grid-cols-3 gap-4 text-center">
+  <div class="bg-gray-800 p-3 rounded-xl">
+    <h3 class="text-gray-400 text-sm uppercase">Total Uploads</h3>
+    <p class="text-2xl font-bold text-indigo-400">{{ metrics.uploads }}</p>
   </div>
-  <div class="bg-slate-800 rounded-lg p-4 shadow">
-    <p class="text-xs text-gray-400">Failures</p>
-    <p class="text-2xl font-semibold text-rose-400">{{ upload_failures_total }}</p>
+  <div class="bg-gray-800 p-3 rounded-xl">
+    <h3 class="text-gray-400 text-sm uppercase">Failures</h3>
+    <p class="text-2xl font-bold text-red-400">{{ metrics.failures }}</p>
   </div>
-  <div class="bg-slate-800 rounded-lg p-4 shadow">
-    <p class="text-xs text-gray-400">Avg Duration (ms)</p>
-    <p class="text-2xl font-semibold text-emerald-400">{{ '%.2f' % upload_avg_duration_ms }}</p>
+  <div class="bg-gray-800 p-3 rounded-xl">
+    <h3 class="text-gray-400 text-sm uppercase">Avg Duration (ms)</h3>
+    <p class="text-2xl font-bold text-green-400">{{ metrics.avg_duration }}</p>
   </div>
 </div>

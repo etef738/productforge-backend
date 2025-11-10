@@ -1,56 +1,38 @@
+
 {% extends "base_dashboard.html" %}
-{% block title %}Upload | ProductForge{% endblock %}
-{% block head_extra %}
-<style>
-  .htmx-swapping { opacity: 0.5; transition: opacity 0.2s ease; }
-  .htmx-settling { opacity: 1; }
-</style>
-{% endblock %}
 {% block content %}
-<section class="max-w-5xl mx-auto">
-  <h1 class="text-3xl font-bold mb-4">📤 Upload</h1>
-  <div id="upload-metrics" class="mb-4"
-       hx-get="/dashboard/api/upload-metrics-html"
-       hx-trigger="load, every 5s"
-       hx-swap="innerHTML">
-    <!-- metrics will load here -->
-    <div class="text-sm text-gray-400">Loading metrics…</div>
-  </div>
-  <form method="POST" action="/upload/file" enctype="multipart/form-data" class="space-y-3 bg-gray-800 p-4 rounded border border-purple-500/40">
-    <label class="block text-sm">ZIP Archive:</label>
-    <input type="file" name="file" accept=".zip" required class="text-sm" />
-    <button type="submit" class="px-4 py-2 bg-indigo-600 rounded hover:bg-indigo-500">Upload</button>
+<div class="space-y-6">
+  <h2 class="text-2xl font-bold text-indigo-400 flex items-center gap-2">
+    📤 Upload
+  </h2>
+
+  <!-- Metrics Panel -->
+  <div id="upload-metrics" hx-get="/dashboard/api/upload-metrics-html" hx-trigger="load, every 10s" hx-swap="outerHTML"></div>
+
+  <!-- Upload Form -->
+  <form id="upload-form"
+        class="bg-gray-900/50 p-4 rounded-2xl flex flex-col sm:flex-row items-center gap-4 border border-indigo-500/20"
+        enctype="multipart/form-data"
+        method="post"
+        hx-post="/upload/file"
+        hx-target="#recent-uploads"
+        hx-swap="outerHTML transition:opacity">
+    <label class="text-gray-300 font-medium">ZIP Archive:</label>
+    <input type="file" name="file"
+           accept=".zip"
+           required
+           class="file-input file-input-bordered file-input-primary text-sm bg-gray-800 text-gray-100 rounded-xl p-2 w-full sm:w-auto" />
+    <button type="submit"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-2 rounded-xl transition-all shadow-md">
+      Upload
+    </button>
   </form>
-  <h2 class="text-xl mt-8 mb-3 font-semibold">Recent Uploads <span class="text-sm text-gray-400">(auto-refresh)</span></h2>
-  <div id="uploads-table" 
-       hx-get="/dashboard/api/recent-uploads-html" 
-       hx-trigger="load, every 10s"
-       hx-swap="innerHTML">
-    <!-- Initial server-side content -->
-    {% if uploads and uploads|length > 0 %}
-    <table class="w-full text-sm border border-gray-700 rounded overflow-hidden">
-      <thead class="bg-gray-700">
-        <tr>
-          <th class="p-2 text-left">Filename</th>
-          <th class="p-2 text-left">Upload ID</th>
-          <th class="p-2 text-left">Uploaded At</th>
-          <th class="p-2 text-left">Size</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for u in uploads %}
-        <tr class="border-t border-gray-700">
-          <td class="p-2">{{ u.filename or u.original_filename }}</td>
-          <td class="p-2 font-mono text-xs">{{ u.upload_id }}</td>
-          <td class="p-2">{{ u.uploaded_at or '—' }}</td>
-          <td class="p-2">{{ (u.size // 1024) if u.size else '—' }} KB</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-      <p class="text-gray-400 text-sm">No uploads yet.</p>
-    {% endif %}
+
+  <!-- Recent Uploads -->
+  <div id="recent-uploads"
+       hx-get="/dashboard/api/recent-uploads-html"
+       hx-trigger="load, every 15s"
+       hx-swap="outerHTML transition:opacity">
   </div>
-</section>
+</div>
 {% endblock %}
