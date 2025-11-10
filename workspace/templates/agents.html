@@ -1,25 +1,21 @@
-  {% if agents and agents|length > 0 %}
 
-{% extends "base_dashboard.html" %}
+{% extends "base.html" %}
 {% block content %}
-<div class="space-y-8">
-  <h2 class="text-2xl font-bold text-indigo-400 flex items-center gap-2">🤖 Agents</h2>
-
-  <form hx-post="/dashboard/agents/register"
-        hx-target="#agents-table"
-        hx-swap="outerHTML transition:opacity"
-        class="flex flex-col sm:flex-row gap-3 bg-gray-900/60 p-4 rounded-xl border border-indigo-500/20">
-    <input name="name" placeholder="name" required class="rounded-xl p-2 bg-gray-800 text-gray-100 flex-1">
-    <input name="role" placeholder="role" required class="rounded-xl p-2 bg-gray-800 text-gray-100 flex-1">
-    <input name="model" placeholder="model" required class="rounded-xl p-2 bg-gray-800 text-gray-100 flex-1">
-    <button class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl font-semibold transition">Create</button>
-  </form>
-
-  <div id="agents-table"
-       hx-get="/dashboard/api/agents-table"
-       hx-trigger="load, every 10s"
-       hx-swap="outerHTML transition:opacity">
+<section class="p-4">
+  <h2 class="text-2xl font-bold mb-4 text-blue-400">🤖 Registered Agents</h2>
+  {% if agents %}
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for a in agents %}
+    <div class="bg-gray-800 p-4 rounded-2xl shadow">
+      <h3 class="font-semibold text-lg">{{ a.name }}</h3>
+      <p class="text-gray-400 text-sm">{{ a.role }}</p>
+      <p class="text-gray-500 text-xs mt-2">Model: {{ a.model }}</p>
+      <span class="text-green-400 text-sm">{{ a.status }}</span>
+    </div>
+    {% endfor %}
   </div>
-</div>
+  {% else %}
+  <p class="text-gray-400">No agents registered yet.</p>
+  {% endif %}
+</section>
 {% endblock %}
-      </tbody>

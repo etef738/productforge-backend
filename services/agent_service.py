@@ -1,9 +1,9 @@
-import json, time
+
 from core.redis_client import get_redis_client
 from crewai import Agent, Task, Crew
 from openai import OpenAI
+import json, time
 
-AGENT_KEY = "agents_registry"
 client = OpenAI()
 
 class AgentService:
@@ -16,25 +16,28 @@ class AgentService:
             "model": model,
             "status": "ready",
         }
-        await r.hset("agent:" + name, mapping=agent_data)
-        return AgentService.create_agent_instance(agent_data)
+        await r.hset(f"agent:{name}", mapping=agent_data)
+        return agent_data
 
     @staticmethod
     def create_agent_instance(agent_data):
         return Agent(
             role=agent_data["role"],
             goal=f"Perform {agent_data['role']} responsibilities efficiently.",
-            backstory=f"{agent_data['name']} is a specialized AI agent designed for {agent_data['role']}.",
+            backstory=f"{agent_data['name']} is a specialized AI agent for {agent_data['role']}.",
             llm=agent_data["model"]
         )
 
     @staticmethod
     async def list_agents():
+        """Return all registered agents from Redis."""
         r = get_redis_client()
         keys = await r.keys("agent:*")
         agents = []
         for k in keys:
-            agents.append(await r.hgetall(k))
+            agent_data = await r.hgetall(k)
+            if agent_data:
+                agents.append(agent_data)
         return agents
 
     @staticmethod
@@ -54,16 +57,3 @@ class AgentService:
         await r.set(f"agent_result:{agent_name}", result)
         await r.hset(f"agent:{agent_name}", "status", "completed")
         return {"agent": agent_name, "result": result}
-
-# === Compatibility adapter for legacy imports ===
-# Keeps existing route imports working after refactor
-service = AgentService()
-
-async def register_agent(*args, **kwargs):
-    return await service.register_agent(*args, **kwargs)
-
-async def list_agents(*args, **kwargs):
-    return await service.list_agents(*args, **kwargs)
-
-async def run_agent_task(*args, **kwargs):
-    return await service.run_agent_task(*args, **kwargs)
