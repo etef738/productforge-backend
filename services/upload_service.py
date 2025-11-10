@@ -8,20 +8,20 @@ from fastapi import UploadFile
 from core.utils import get_upload_dir, ensure_directory, sanitize_filename
 from core.exceptions import UploadException
 from core.redis_client import get_redis_client, index_upload, list_uploads as list_uploads_from_index
-import json
-from datetime import datetime, UTC
 
-# Simple upload for /upload/file endpoint (Phase 6)
+import os
+from typing import Dict, Any, List
+from uuid import uuid4
+from fastapi import UploadFile
+from core.utils import get_upload_dir, ensure_directory, sanitize_filename
+from core.exceptions import UploadException
+from core.redis_client import get_redis_client, index_upload, list_uploads as list_uploads_from_index
+import json
+from datetime import datetime
+
+# Ensure workspace/uploads exists on startup (fixes 502 on Railway)
 UPLOAD_DIR = "workspace/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-async def save_uploaded_file(file: UploadFile):
-    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-    dest = os.path.join(UPLOAD_DIR, f"{timestamp}_{file.filename}")
-    content = await file.read()
-    with open(dest, "wb") as f:
-        f.write(content)
-    return dest
 
 
 class UploadService:
