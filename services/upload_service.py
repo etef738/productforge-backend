@@ -1,9 +1,15 @@
+# Upload service for handling file uploads with Redis indexing.
+# 
+# Ensure workspace/uploads exists on startup (fixes 502 on Railway)
 """
 Upload service for handling file uploads with Redis indexing.
 """
 import os
 from typing import Dict, Any, List
 from uuid import uuid4
+import tempfile
+import zipfile
+import json
 from fastapi import UploadFile
 from core.utils import get_upload_dir, ensure_directory, sanitize_filename
 from core.exceptions import UploadException
@@ -21,6 +27,60 @@ from core.exceptions import UploadException
 from core.redis_client import get_redis_client, index_upload, list_uploads as list_uploads_from_index
 from core.metrics import get_metrics
 
+from prometheus_client import Counter, Histogram
+
+# Prometheus metrics
+upload_counter = Counter("uploads_total", "Total number of file uploads")
+upload_failures = Counter("upload_failures_total", "Total failed uploads")
+upload_latency = Histogram("upload_duration_seconds", "Time taken for uploads")
+
+async def handle_upload(file: UploadFile, redis):
+    """
+    Handles a file upload.
+    - Saves uploaded ZIP temporarily
+    - Extracts metadata
+    - Updates Prometheus metrics + Redis observability
+    """
+    start_time = time.time()
+    try:
+        # Save file to a temp location
+        suffix = ".zip" if file.filename.endswith(".zip") else ""
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
+
+        # Basic validation: must be a zip
+        if not zipfile.is_zipfile(tmp_path):
+            upload_failures.inc()
+            return json.dumps({"status": "error", "message": "Invalid file type. Must be a ZIP."})
+
+        # Count + metrics
+        upload_counter.inc()
+        duration = round(time.time() - start_time, 2)
+        upload_latency.observe(duration)
+
+        # Store upload info in Redis
+        upload_info = {
+            "status": "success",
+            "filename": file.filename,
+            "duration_ms": duration * 1000,
+            "metrics": {"uploads": float(upload_counter._value.get()), "failures": float(upload_failures._value.get())}
+        }
+        await redis.set(f"upload:{file.filename}", json.dumps(upload_info))
+        await redis.lpush("recent_uploads", json.dumps(upload_info))
+
+        return json.dumps(upload_info)
+
+    except Exception as e:
+        upload_failures.inc()
+        return json.dumps({"status": "error", "message": str(e)})
+
+    finally:
+        # Cleanup temp file
+        try:
+            os.remove(tmp_path)
+        except Exception:
+            pass
 # Ensure workspace/uploads exists on startup (fixes 502 on Railway)
 UPLOAD_DIR = "workspace/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
