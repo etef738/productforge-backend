@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import time
 from typing import Dict, Any, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from core.redis_client import get_redis_client
 from core.metrics import get_metrics
@@ -50,7 +50,7 @@ class AnalyticsService:
 
     def compute_snapshot(self) -> Dict[str, Any]:
         now = time.time()
-        dt_now = datetime.utcfromtimestamp(now)
+        dt_now = datetime.fromtimestamp(now, UTC)
         one_hour_ago = now - 3600
         one_day_ago = now - 86400
         one_week_ago = now - 7 * 86400
@@ -128,7 +128,7 @@ class AnalyticsService:
 
     def trends_24h(self) -> Dict[str, Any]:
         """Return simple 24h trend data. If indices are missing, return flat series."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         points: List[Dict[str, Any]] = []
         key = "results_index"
         for h in range(24):
