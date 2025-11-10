@@ -4,6 +4,7 @@ Modular architecture with clean separation of concerns.
 """
 import os
 import time
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
@@ -46,6 +47,43 @@ validate_environment()
 BACKEND_START_TIME = time.time()
 
 # ===========================
+# LIFESPAN CONTEXT MANAGER
+# ===========================
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifespan: startup and shutdown events."""
+    # STARTUP
+    logger.info("🚀 ProductForge Backend Starting...")
+    logger.info(f"Environment: {'Railway' if os.environ.get('RAILWAY_ENVIRONMENT') else 'Local'}")
+    logger.info(f"Version: 2.0.0")
+    
+    # Metrics initialization log
+    from core.metrics import get_metrics
+    _ = get_metrics()
+    logger.info("✅ Metrics ready")
+    
+    # Run deployment verification
+    deploy_service = DeployCheckService()
+    verification = await deploy_service.verify_startup()
+    
+    if verification["status"] == "healthy":
+        logger.info("✅✅✅ Railway boot OK - All systems operational ✅✅✅")
+    elif verification["status"] == "degraded":
+        logger.warning(f"⚠️ Railway boot DEGRADED - {len(verification['warnings'])} warnings")
+        for warning in verification["warnings"]:
+            logger.warning(f"  ⚠️ {warning}")
+    else:
+        logger.error(f"❌ Railway boot FAILED - {len(verification['warnings'])} errors")
+        for warning in verification["warnings"]:
+            logger.error(f"  ❌ {warning}")
+    
+    yield  # Application runs here
+    
+    # SHUTDOWN
+    logger.info("👋 ProductForge Backend Shutting Down...")
+
+# ===========================
 # APPLICATION INITIALIZATION
 # ===========================
 app = FastAPI(
@@ -53,7 +91,8 @@ app = FastAPI(
     description="Enterprise-grade multi-agent AI orchestration platform",
     version="2.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # ===========================
@@ -86,41 +125,6 @@ app.add_middleware(LoggingMiddleware)
 
 # API Key middleware (skips when API_KEY is not set)
 app.add_middleware(APIKeyMiddleware)
-
-# ===========================
-# STARTUP EVENTS
-# ===========================
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize services on application startup with comprehensive checks."""
-    logger.info("🚀 ProductForge Backend Starting...")
-    logger.info(f"Environment: {'Railway' if os.environ.get('RAILWAY_ENVIRONMENT') else 'Local'}")
-    logger.info(f"Version: 2.0.0")
-    # Metrics initialization log
-    from core.metrics import get_metrics
-    _ = get_metrics()
-    logger.info("✅ Metrics ready")
-    
-    # Run deployment verification
-    deploy_service = DeployCheckService()
-    verification = await deploy_service.verify_startup()
-    
-    if verification["status"] == "healthy":
-        logger.info("✅✅✅ Railway boot OK - All systems operational ✅✅✅")
-    elif verification["status"] == "degraded":
-        logger.warning(f"⚠️ Railway boot DEGRADED - {len(verification['warnings'])} warnings")
-        for warning in verification["warnings"]:
-            logger.warning(f"  ⚠️ {warning}")
-    else:
-        logger.error(f"❌ Railway boot FAILED - {len(verification['warnings'])} errors")
-        for warning in verification["warnings"]:
-            logger.error(f"  ❌ {warning}")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on application shutdown."""
-    logger.info("👋 ProductForge Backend Shutting Down...")
 
 # ===========================
 # ROUTER REGISTRATION
