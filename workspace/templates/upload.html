@@ -9,6 +9,13 @@
 {% block content %}
 <section class="max-w-5xl mx-auto">
   <h1 class="text-3xl font-bold mb-4">📤 Upload</h1>
+  <div id="upload-metrics" class="mb-4"
+       hx-get="/dashboard/api/upload-metrics-html"
+       hx-trigger="load, every 5s"
+       hx-swap="innerHTML">
+    <!-- metrics will load here -->
+    <div class="text-sm text-gray-400">Loading metrics…</div>
+  </div>
   <form method="POST" action="/upload/file" enctype="multipart/form-data" class="space-y-3 bg-gray-800 p-4 rounded border border-purple-500/40">
     <label class="block text-sm">ZIP Archive:</label>
     <input type="file" name="file" accept=".zip" required class="text-sm" />

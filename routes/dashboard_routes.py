@@ -164,3 +164,18 @@ async def recent_workflows_api():
     
     return JSONResponse(content={"workflows": workflows, "count": len(workflows)})
 
+
+@router.get("/api/upload-metrics-html", response_class=HTMLResponse)
+async def upload_metrics_html(request: Request):
+    """Return upload metrics panel for the upload page (HTMX)."""
+    m = get_metrics().to_dict()
+    return templates.TemplateResponse(
+        "partials_upload_metrics.html",
+        {
+            "request": request,
+            "upload_requests_total": m.get("upload_requests_total", 0),
+            "upload_failures_total": m.get("upload_failures_total", 0),
+            "upload_avg_duration_ms": m.get("upload_avg_duration_ms", 0.0),
+        },
+    )
+

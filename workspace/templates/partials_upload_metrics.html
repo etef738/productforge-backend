@@ -1,0 +1,14 @@
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+  <div class="bg-slate-800 rounded-lg p-4 shadow">
+    <p class="text-xs text-gray-400">Total Uploads</p>
+    <p class="text-2xl font-semibold text-indigo-400">{{ upload_requests_total }}</p>
+  </div>
+  <div class="bg-slate-800 rounded-lg p-4 shadow">
+    <p class="text-xs text-gray-400">Failures</p>
+    <p class="text-2xl font-semibold text-rose-400">{{ upload_failures_total }}</p>
+  </div>
+  <div class="bg-slate-800 rounded-lg p-4 shadow">
+    <p class="text-xs text-gray-400">Avg Duration (ms)</p>
+    <p class="text-2xl font-semibold text-emerald-400">{{ '%.2f' % upload_avg_duration_ms }}</p>
+  </div>
+</div>

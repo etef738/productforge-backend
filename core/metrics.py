@@ -7,8 +7,33 @@ import time
 from typing import Dict, Any
 from datetime import datetime
 
+# Optional prometheus_client integration with safe fallback
+try:
+    from prometheus_client import Counter, Histogram
+except Exception:  # pragma: no cover - fallback for environments without prometheus_client
+    class _NullMetric:
+        def inc(self, *args, **kwargs):
+            return None
+        def observe(self, *args, **kwargs):
+            return None
+    def Counter(name, doc):  # type: ignore
+        return _NullMetric()
+    def Histogram(name, doc, buckets=None):  # type: ignore
+        return _NullMetric()
 
-UPLOAD_COUNTER = None  # Placeholder for compatibility
+# Upload-related Prometheus metrics (module-level singletons)
+upload_requests_total = Counter(
+    "productforge_upload_requests_total",
+    "Total number of file upload requests"
+)
+upload_failures_total = Counter(
+    "productforge_upload_failures_total",
+    "Total number of failed file upload requests"
+)
+upload_duration_seconds = Histogram(
+    "productforge_upload_duration_seconds",
+    "File upload processing duration in seconds"
+)
 
 
 class MetricsCollector:
@@ -24,10 +49,16 @@ class MetricsCollector:
         self._system_health_requests_total = 0
         self._reports_generated_total = 0
         self._analytics_snapshots_total = 0
+        # Phase 8 additions
         self._dashboard_refresh_total = 0
         self._htmx_events_total = 0
         self._cache_hits_total = 0
         self._cache_misses_total = 0
+        # Upload metrics (internal mirrors for quick JSON exposure)
+        self._upload_requests_total = 0
+        self._upload_failures_total = 0
+        self._upload_duration_sum_ms = 0.0
+        self._upload_duration_count = 0
         
     def increment_requests(self):
         """Increment total request counter."""
@@ -73,6 +104,24 @@ class MetricsCollector:
     def increment_cache_miss(self):
         """Increment cache miss counter."""
         self._cache_misses_total += 1
+    
+    # Upload metrics helpers (also mirror to Prometheus metrics)
+    def increment_upload_request(self):
+        self._upload_requests_total += 1
+        # Mirror to Prometheus counter (safe even if fallback)
+        upload_requests_total.inc()
+
+    def increment_upload_failure(self):
+        self._upload_failures_total += 1
+        upload_failures_total.inc()
+
+    def record_upload_duration_ms(self, duration_ms: float):
+        self._upload_duration_sum_ms += float(duration_ms)
+        self._upload_duration_count += 1
+        try:
+            upload_duration_seconds.observe(duration_ms / 1000.0)
+        except Exception:
+            pass
     
     def get_uptime_seconds(self) -> float:
         """Get application uptime in seconds."""
@@ -139,6 +188,18 @@ class MetricsCollector:
             "# TYPE productforge_cache_misses_total counter",
             f"productforge_cache_misses_total {self._cache_misses_total}",
             "",
+            "# HELP productforge_upload_requests_total Total upload requests (mirror)",
+            "# TYPE productforge_upload_requests_total counter",
+            f"productforge_upload_requests_total {self._upload_requests_total}",
+            "",
+            "# HELP productforge_upload_failures_total Total failed upload requests (mirror)",
+            "# TYPE productforge_upload_failures_total counter",
+            f"productforge_upload_failures_total {self._upload_failures_total}",
+            "",
+            "# HELP productforge_upload_avg_duration_ms Average upload processing duration in ms (computed)",
+            "# TYPE productforge_upload_avg_duration_ms gauge",
+            f"productforge_upload_avg_duration_ms {self._compute_upload_avg_ms():.2f}",
+            "",
         ]
         
         return "\n".join(lines)
@@ -162,8 +223,16 @@ class MetricsCollector:
             "cache_hit_rate": round(
                 self._cache_hits_total / max(1, self._cache_hits_total + self._cache_misses_total) * 100, 2
             ),
+            "upload_requests_total": self._upload_requests_total,
+            "upload_failures_total": self._upload_failures_total,
+            "upload_avg_duration_ms": round(self._compute_upload_avg_ms(), 2),
             "timestamp": datetime.now().isoformat()
         }
+
+    def _compute_upload_avg_ms(self) -> float:
+        if self._upload_duration_count == 0:
+            return 0.0
+        return self._upload_duration_sum_ms / float(self._upload_duration_count)
 
 
 # Global singleton instance

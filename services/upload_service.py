@@ -10,14 +10,16 @@ from core.exceptions import UploadException
 from core.redis_client import get_redis_client, index_upload, list_uploads as list_uploads_from_index
 
 import os
+import json
+import time
 from typing import Dict, Any, List
 from uuid import uuid4
+from datetime import datetime
 from fastapi import UploadFile
 from core.utils import get_upload_dir, ensure_directory, sanitize_filename
 from core.exceptions import UploadException
 from core.redis_client import get_redis_client, index_upload, list_uploads as list_uploads_from_index
-import json
-from datetime import datetime
+from core.metrics import get_metrics
 
 # Ensure workspace/uploads exists on startup (fixes 502 on Railway)
 UPLOAD_DIR = "workspace/uploads"
@@ -63,7 +65,11 @@ class UploadService:
         # Validate file type
         if not file.filename.endswith(".zip"):
             raise UploadException("Only ZIP files are allowed")
-        
+
+        start_time = time.time()
+        metrics = get_metrics()
+        metrics.increment_upload_request()
+
         # Read content
         content = await file.read()
         
@@ -77,8 +83,12 @@ class UploadService:
         file_path = os.path.join(self.upload_dir, f"{upload_id}_{safe_filename}")
         
         # Save file
-        with open(file_path, "wb") as f:
-            f.write(content)
+        try:
+            with open(file_path, "wb") as f:
+                f.write(content)
+        except Exception as e:
+            metrics.increment_upload_failure()
+            raise UploadException(f"Failed to save file: {e}")
         
         # Create job for processing
         job_id = str(uuid4())
@@ -108,13 +118,22 @@ class UploadService:
         }
         index_upload(upload_id, upload_metadata)
         
+        duration_ms = (time.time() - start_time) * 1000.0
+        metrics.record_upload_duration_ms(duration_ms)
+
         return {
             "status": "uploaded",
             "upload_id": upload_id,
             "path": file_path,
             "job_id": job_id,
             "filename": safe_filename,
-            "size": len(content)
+            "size": len(content),
+            "metrics": {
+                "upload_count": metrics.to_dict()["upload_requests_total"],
+                "failure_count": metrics.to_dict()["upload_failures_total"],
+                "average_duration_ms": metrics.to_dict()["upload_avg_duration_ms"],
+                "last_duration_ms": round(duration_ms, 2)
+            }
         }
     
     def list_uploads(self, limit: int = 20) -> List[Dict[str, Any]]:

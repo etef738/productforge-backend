@@ -4,9 +4,10 @@ File upload routes with indexed listing support.
 
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+import time
 from fastapi.responses import JSONResponse
 from services.upload_service import save_uploaded_file, UploadService
-from core.metrics import UPLOAD_COUNTER
+from core.metrics import get_metrics
 from core.exceptions import UploadException
 import logging
 
@@ -16,12 +17,27 @@ logger = logging.getLogger("upload")
 # Modern upload endpoint
 @router.post("/file")
 async def upload_file_modern(file: UploadFile = File(...)):
+    metrics = get_metrics()
+    start = time.time()
+    metrics.increment_upload_request()
     try:
         path = await save_uploaded_file(file)
-        UPLOAD_COUNTER.inc()
+        duration_ms = (time.time() - start) * 1000.0
+        metrics.record_upload_duration_ms(duration_ms)
         logger.info(f"✅ Uploaded file saved to {path}")
-        return JSONResponse({"status": "success", "filename": file.filename, "path": path})
+        return JSONResponse({
+            "status": "success",
+            "filename": file.filename,
+            "path": path,
+            "metrics": {
+                "upload_count": metrics.to_dict()["upload_requests_total"],
+                "failure_count": metrics.to_dict()["upload_failures_total"],
+                "average_duration_ms": metrics.to_dict()["upload_avg_duration_ms"],
+                "last_duration_ms": round(duration_ms, 2)
+            }
+        })
     except Exception as e:
+        metrics.increment_upload_failure()
         logger.error(f"❌ Upload failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
